@@ -1,0 +1,15 @@
+{
+		"mesosactionip": "10.10.174.96"
+		"mesosactionport": "5555"
+		"serveraddress": "10.10.200.40:8080",
+		"targettype":"Mesos",
+		"nameoraddress":  "mesos",
+		"username":"mesos_user",
+		"targetidentifier": "my_mesos",
+		"password":"fake_password",
+		"localaddress":"http://10.10.174.91/",
+		"websocketusername": "vmtRemoteMediation",
+		"websocketpassword": "vmtRemoteMediation",
+		"opsmanagerusername": "administrator",
+		"opsmanagerpassword": "a"
+}

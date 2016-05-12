@@ -1,8 +1,7 @@
 package action
 
 import (
-	"errors"
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	//	"github.com/golang/glog"
 	//	vmtmeta "github.com/pamelasanchezvi/communicator/metadata"
@@ -13,7 +12,7 @@ import (
 	"net/http"
 )
 
-
+/*
 type recordingTransport struct {
 	req *http.Request
 }
@@ -22,14 +21,26 @@ func (t *recordingTransport) RoundTrip(req *http.Request) (resp *http.Response, 
 	t.req = req
 	return nil, errors.New("dummy impl")
 }
+*/
 
+type migration struct {
+	destination_node_id string
+	task_ids []string
+}
 func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 
 	baseUrl := "http://" + mesosClient.MesosMasterIP + ":" + mesosClient.MesosMasterPort + "/" + mesosClient.Action + "?"
 	//fullUrl := baseUrl + "destination_node_id=32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0&task_ids=basic-0.6432abd7-179f-11e6-9521-52540006b4aa"
 	fmt.Println(" --> The full Url is ", baseUrl)
 
-	var jsonStr = []byte(`{"destination_node_id":"32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0", "task_ids": ["basic-0.b34401b2-1844-11e6-bafb-52540006b4aa"]}`)
+        taskid := []string{mesosClient.DestinationId }//"basic-0.b34401b2-1844-11e6-bafb-52540006b4aa"}
+    	node := mesosClient.TaskId//"32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0"
+
+    	m := migration{node,taskid}
+   	b, err := json.Marshal(m) 
+    	var jsonStr = []byte(b)  
+
+	//var jsonStr = []byte(`{"destination_node_id":"32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0", "task_ids": ["basic-0.b34401b2-1844-11e6-bafb-52540006b4aa"]}`)
 	req, err := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonStr))
 	req.Header.Set("X-Custom-Header", "myvalue")
 	req.Header.Set("Content-Type", "application/json")
