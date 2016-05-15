@@ -50,7 +50,7 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave) (*NodeRes
 	fmt.Printf("Node CPU capacity is %f \n", nodeCpuCapacity)
 	fmt.Printf("Node Mem capacity is %f \n", nodeMemCapacity)
 	// Find out the used value for each commodity
-	cpuUsed := slaveInfo.UsedResources.CPUs //float64(rootCurCpu) * float64(cpuFrequency)
+	cpuUsed := slaveInfo.Calculated.CPUs //float64(rootCurCpu) * float64(cpuFrequency)
 	memUsed := slaveInfo.UsedResources.Mem  //float64(rootCurMem)
 
 	// this flag is defined at package level, in probe.go

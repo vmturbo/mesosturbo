@@ -23,6 +23,7 @@ type MesosServerMessageHandler struct {
 	meta   *vmtmeta.VMTMeta
 	wsComm *comm.WebSocketCommunicator
 	//etcdStorage storage.Storage
+	lastDiscoveryTime *time.Time 
 }
 
 // Use the vmt restAPI to add a Kubernetes target.
@@ -40,7 +41,7 @@ func (handler *MesosServerMessageHandler) AddTarget() {
 	vmturboApi.AddMesosTarget(handler.meta.TargetType, handler.meta.NameOrAddress, handler.meta.Username, handler.meta.TargetIdentifier, handler.meta.Password)
 }
 
-// Send an API request to make server start a discovery process on current k8s.
+// Send an API request to make server start a discovery process on current Mesos
 func (handler *MesosServerMessageHandler) DiscoverTarget() {
 	vmtUrl := handler.wsComm.VmtServerAddress
 
@@ -85,9 +86,13 @@ func (handler *MesosServerMessageHandler) keepDiscoverAlive(messageID int32) {
 	handler.wsComm.SendClientMessage(clientMsg)
 }
 
-// DiscoverTopology receives a discovery request from server and start probing the k8s.
+// DiscoverTopology receives a discovery request from server and start probing the Mesos.
 func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.MediationServerMessage) {
-	//Discover the kubernetes topology
+	lastTime := handler.lastDiscoveryTime
+	currentTime := time.Now()
+	duration := time.Since(lastTime)
+	secondsSinceLastDiscovery := duration.Seconds()	
+	//Discover the Mesos topology
 	glog.V(3).Infof("Discover topology request from server.")
 
 	// 1. Get message ID
@@ -97,16 +102,10 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	defer close(stopCh)
 
 	// 2. Build discoverResponse
-	// must have mesosClient to do ParseNode and ParsePod
-	//	if handler.mesosClient == nil {
-	//		glog.V(3).Infof("mesos client is nil, error")
-	//		return
-	//	}
-	// returns &KubeProbe{	KubeClient: kubeClient,} for MESOS its a string !!
 	mesosProbe, err := newMesosProbe()
+	mesosProbe.TimeSinceLastDisc = secondsSinceLastDiscovery
 	res := mesosProbe.Slaves[0].Resources
 	fmt.Printf("at Discover topology: disk %f, mem %f , cpu %f  \n", res.Disk, res.Mem, res.CPUs)
-	// return []*sdk.EntityDTO
 	nodeEntityDtos, err := ParseNode(mesosProbe)
 	fmt.Printf(" slave name is %s \n", nodeEntityDtos[0].DisplayName)
 	if err != nil {
@@ -288,6 +287,13 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 	if respContent.SlaveIdIpMap == nil {
 		respContent.SlaveIdIpMap = make(map[string]string)
 	}
+	// UPDATE RESOURCE UNITS AFTER HTTP REQUEST
+	for idx := range respContent.Slaves {
+		s := respContent.Slaves[idx]
+		s.Resources.Mem = s.Resources.Mem * float64(1024)
+		s.UsedResources.Mem = s.UsedResources.Mem * float64(1024)    
+		s.OfferedResources.Mem = s.OfferedResources.Mem * float64(1024)
+	}
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
@@ -326,6 +332,10 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
+	for j := range taskContent.Tasks{
+		t := taskContent.Tasks[j]
+		t.Resources.Mem = t.Resources.Mem * float64(1024)
+	}
 	respContent.TaskMasterAPI = *taskContent
 
 	defer resp.Body.Close()
@@ -333,8 +343,8 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 	// STATS
 	var mapTaskRes map[string]util.Resources
 	mapTaskRes = make(map[string]util.Resources)
-//	var mapTaskRes map[string]util.Resources
-//	mapTaskRes = *mapTRes
+	var mapSlaveUse map[string]util.CalculatedUse
+	mapSlaveUse = make(map[string]util.CalculatedUse)
 	arrM := respContent.TaskMasterAPI.Tasks
 	for j := range arrM{
 		if (arrM[j].State != "TASK_RUNNING"){
@@ -357,10 +367,8 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
                 			fmt.Printf("error %s", err)
         			}  
 		        	fmt.Println("response is %+v",string(stringResp))
-	        //	used := parseUsedResources(probe.Task.Id, resp)
        				byteContent := []byte(stringResp) 
 		        	var usedRes = new([]util.Executor)
-//      err := json.NewDecoder(resp.Body).Decode(&usedRes)
         			err = json.Unmarshal(byteContent, &usedRes)
 		        	if (err != nil){
                 			fmt.Printf("JSON erroriiiiiiii %s", err)
@@ -378,16 +386,42 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
                         			}
 						taskId := arrM[j].Id
 						mapTaskRes[taskId] = *res
-                        //e.Statistics.MemLimitBytes
-                        //e.Statistics.MemRSSBytes
                         			break
                	 			}
         			}
+			// SLAVE MONITOR
+				if val, ok := mapSlaveUse[s.Id]; !ok{
+					i := 0  // TODO sunday
+					executor := arrOfExec[i]
+					//if first time ??
+					var prevSecs float64
+					curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
+					if (respContent.CPUsumSystemUserSecs == nil){
+						prevSecs := curSecs	
+					}else{
+						prevSecs := respContent.CPUsumSystemUserSecs
+					}
+					diffSecs := curSecs - prevSecs
+					lastTime := respContent.TimeSinceLastDisc
+					diffTime := time.Since(lastTime)
+					diffT := diffTime.Seconds()
+					usedCPUpercent :=  diffSecs/diffT
+					// ratio * cores * 1000kHz
+					usedCPU := usedCPUpercent*respContent.s.Resources.CPUs*float64(1000)
+					mapSlaveUse[s.Id] = &CalculatedUse{
+						CPUs: usedCPU,
+					}
+					s.Calculated.CPUs = usedCPU
+					// UPDATE stats
+					respContent.TimeSinceLastDisc = time.Now()
+					respContent.CPUsymSystemUserSecs = curSecs
+				} 	
 			}
 		}
 	}
 	// map task to resources
 	respContent.MapTaskResources = mapTaskRes
+	respContent.SlaveUseMap = mapSlaveUse
 	return respContent, nil
 }
 

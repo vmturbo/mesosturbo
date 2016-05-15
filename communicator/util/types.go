@@ -6,10 +6,18 @@ type Resources struct {
 	CPUs float64 `json:"cpus"`
 }
 
+type CalculatedUse struct {
+	Disk float64
+	Mem float64
+	CPUs float64
+}
+
 type Statistics struct {
 	CPUsLimit float64 `json:"cpus_limit"`
 	MemLimitBytes float64 `json:"mem_limit_bytes"`
 	MemRSSBytes float64 `json:"mem_rss_bytes"`
+	CPUsystemTimeSecs float64 `json:"cpus_system_time_secs"`
+	CPUuserTimeSecs float64	`json:"cpus_user_time_secs"`
 }
 
 type Executor struct {
@@ -26,6 +34,7 @@ type Slave struct {
 	UsedResources    Resources `json:"used_resources"`
 	OfferedResources Resources `json:"offered_resources"`
 	Name             string    `json:"hostname"`
+	Calculated       CalculatedUse
 }
 
 type MesosAPIResponse struct {
@@ -38,6 +47,9 @@ type MesosAPIResponse struct {
 	TaskMasterAPI MasterTasks
 	SlaveIdIpMap  map[string]string
 	MapTaskResources map[string]Resources
+	TimeSinceLastDisc time.Time
+	CPUsumSystemUserSecs float64	
+	SlaveUseMap      map[string]*CalculatedUse
 }
 
 type ContDocker struct {

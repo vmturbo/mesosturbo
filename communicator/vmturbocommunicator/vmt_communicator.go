@@ -18,6 +18,7 @@ type VMTCommunicator struct {
 }
 
 func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.VMTMeta) *VMTCommunicator {
+	fmt.Println("-----> created VMTComm in NewVMT")
 	return &VMTCommunicator{
 		tmpClient: client,
 		meta:      vmtMetadata,
