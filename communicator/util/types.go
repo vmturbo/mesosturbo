@@ -1,5 +1,7 @@
 package util
 
+import "time"
+
 type Resources struct {
 	Disk float64 `json:"disk"`
 	Mem  float64 `json:"mem"`
@@ -7,25 +9,25 @@ type Resources struct {
 }
 
 type CalculatedUse struct {
-	Disk float64
-	Mem float64
-	CPUs float64
+	Disk                 float64
+	Mem                  float64
+	CPUs                 float64
+	CPUsumSystemUserSecs float64
 }
 
 type Statistics struct {
-	CPUsLimit float64 `json:"cpus_limit"`
-	MemLimitBytes float64 `json:"mem_limit_bytes"`
-	MemRSSBytes float64 `json:"mem_rss_bytes"`
+	CPUsLimit         float64 `json:"cpus_limit"`
+	MemLimitBytes     float64 `json:"mem_limit_bytes"`
+	MemRSSBytes       float64 `json:"mem_rss_bytes"`
 	CPUsystemTimeSecs float64 `json:"cpus_system_time_secs"`
-	CPUuserTimeSecs float64	`json:"cpus_user_time_secs"`
+	CPUuserTimeSecs   float64 `json:"cpus_user_time_secs"`
 }
 
 type Executor struct {
-	Id string `json:"executor_id"`
-	Source string `json:"source"`
-	Statistics Statistics `json:"statistics"` 
+	Id         string     `json:"executor_id"`
+	Source     string     `json:"source"`
+	Statistics Statistics `json:"statistics"`
 }
-
 
 type Slave struct {
 	Id               string    `json:"id"`
@@ -44,12 +46,11 @@ type MesosAPIResponse struct {
 	DeActivatedSlaves float64 `json:"deactivated_slaves"`
 	Slaves            []Slave `json:"slaves"`
 	//Frameworks        []Framework `json:"frameworks"`
-	TaskMasterAPI MasterTasks
-	SlaveIdIpMap  map[string]string
-	MapTaskResources map[string]Resources
-	TimeSinceLastDisc time.Time
-	CPUsumSystemUserSecs float64	
-	SlaveUseMap      map[string]*CalculatedUse
+	TaskMasterAPI     MasterTasks
+	SlaveIdIpMap      map[string]string
+	MapTaskResources  map[string]Resources
+	TimeSinceLastDisc *time.Time
+	SlaveUseMap       map[string]*CalculatedUse
 }
 
 type ContDocker struct {
@@ -89,7 +90,7 @@ type NetworkInfos struct {
 
 type Status struct {
 	Container_Status NetworkInfos `json:"container_status"`
-	State   string           `json:"state"`
+	State            string       `json:"state"`
 	//	Timestamp `json:"timestamp"`
 }
 

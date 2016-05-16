@@ -1,19 +1,19 @@
 package vmturbocommunicator
 
 import (
-	"strings"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/probe"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
 	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
+	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -23,7 +23,8 @@ type MesosServerMessageHandler struct {
 	meta   *vmtmeta.VMTMeta
 	wsComm *comm.WebSocketCommunicator
 	//etcdStorage storage.Storage
-	lastDiscoveryTime *time.Time 
+	lastDiscoveryTime *time.Time
+	slaveUseMap       map[string]*util.CalculatedUse
 }
 
 // Use the vmt restAPI to add a Kubernetes target.
@@ -88,10 +89,10 @@ func (handler *MesosServerMessageHandler) keepDiscoverAlive(messageID int32) {
 
 // DiscoverTopology receives a discovery request from server and start probing the Mesos.
 func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.MediationServerMessage) {
-	lastTime := handler.lastDiscoveryTime
-	currentTime := time.Now()
-	duration := time.Since(lastTime)
-	secondsSinceLastDiscovery := duration.Seconds()	
+	//lastTime := *handler.lastDiscoveryTime
+	//currentTime := time.Now()
+	//duration := time.Since(lastTime)
+	//secondsSinceLastDiscovery := duration.Seconds()
 	//Discover the Mesos topology
 	glog.V(3).Infof("Discover topology request from server.")
 
@@ -102,11 +103,11 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	defer close(stopCh)
 
 	// 2. Build discoverResponse
-	mesosProbe, err := newMesosProbe()
-	mesosProbe.TimeSinceLastDisc = secondsSinceLastDiscovery
+	mesosProbe, err := handler.NewMesosProbe(handler.slaveUseMap)
+	//	mesosProbe.TimeSinceLastDisc = secondsSinceLastDiscovery
 	res := mesosProbe.Slaves[0].Resources
 	fmt.Printf("at Discover topology: disk %f, mem %f , cpu %f  \n", res.Disk, res.Mem, res.CPUs)
-	nodeEntityDtos, err := ParseNode(mesosProbe)
+	nodeEntityDtos, err := ParseNode(mesosProbe, mesosProbe.SlaveUseMap)
 	fmt.Printf(" slave name is %s \n", nodeEntityDtos[0].DisplayName)
 	if err != nil {
 		// TODO, should here still send out msg to server?
@@ -146,50 +147,50 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	handler.wsComm.SendClientMessage(clientMsg)
 }
 
-func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionItemDTO, slavemap map[string]string) (*action.MesosClient, error){
+func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionItemDTO, slavemap map[string]string) (*action.MesosClient, error) {
 	actionpath := ""
-	if actionItem.GetActionType() == sdk.ActionItemDTO_MOVE{
+	if actionItem.GetActionType() == sdk.ActionItemDTO_MOVE {
 		glog.V(3).Infof("moving pod now")
 		actionpath = "MigrateTasks"
 		// create map
 		if actionItem.GetTargetSE().GetEntityType() == sdk.EntityDTO_CONTAINER {
 			newSEType := actionItem.GetNewSE().GetEntityType()
 			if newSEType == sdk.EntityDTO_VIRTUAL_MACHINE || newSEType == sdk.EntityDTO_PHYSICAL_MACHINE {
-				targetNode := actionItem.GetNewSE()		
+				targetNode := actionItem.GetNewSE()
 				var machineIPs []string
 				switch newSEType {
-					case sdk.EntityDTO_VIRTUAL_MACHINE:
-						vmData := targetNode.GetVirtualMachineData()
-						if vmData == nil {
-							return nil, fmt.Errorf("Missing VM data")
-						}
-						machineIPs = vmData.GetIpAddress()
-						break
+				case sdk.EntityDTO_VIRTUAL_MACHINE:
+					vmData := targetNode.GetVirtualMachineData()
+					if vmData == nil {
+						return nil, fmt.Errorf("Missing VM data")
+					}
+					machineIPs = vmData.GetIpAddress()
+					break
 				}
 				targetContainer := actionItem.GetTargetSE()
 				containerId := targetContainer.GetId()
 				slaveId := ""
-			//	slaveId, err := getNodeIdFromIP(machineIPs)
-				for j := range machineIPs{
-					if _, ok := slavemap[machineIPs[j]]; ok{
+				//	slaveId, err := getNodeIdFromIP(machineIPs)
+				for j := range machineIPs {
+					if _, ok := slavemap[machineIPs[j]]; ok {
 						slaveId = slavemap[machineIPs[j]]
-						break	
-					}	
-				} 
+						break
+					}
+				}
 				return &action.MesosClient{
-					MesosMasterIP: handler.meta.MesosActionIP,
+					MesosMasterIP:   handler.meta.MesosActionIP,
 					MesosMasterPort: handler.meta.MesosActionPort,
-					Action: actionpath,
-					DestinationId: slaveId,
-					TaskId: containerId,
-				}, nil	
+					Action:          actionpath,
+					DestinationId:   slaveId,
+					TaskId:          containerId,
+				}, nil
 			}
-		}else{
-		// TODO
-		        return nil, fmt.Errorf("Missing data for move")	
+		} else {
+			// TODO
+			return nil, fmt.Errorf("Missing data for move")
 		}
 		return nil, fmt.Errorf("Missing data for move")
-	} // else if provision TODO	
+	} // else if provision TODO
 	return nil, fmt.Errorf("Missing data for move")
 }
 
@@ -217,60 +218,58 @@ func createSlaveIdIpMap(resp *http.Response) (map[string]string, error) {
 	if err != nil {
 		fmt.Printf("error in json unmarshal : %s", err)
 	}
-	 SlaveIpIdMap := make(map[string]string)
+	SlaveIpIdMap := make(map[string]string)
 	slaves := jsonMesosMaster.Slaves
 	for i := range slaves {
 		s := slaves[i]
-                slaveIP := getSlaveIP(slaves[i])
-                SlaveIpIdMap[slaveIP] = s.Id
+		slaveIP := getSlaveIP(slaves[i])
+		SlaveIpIdMap[slaveIP] = s.Id
 	}
-	return  SlaveIpIdMap, nil
+	return SlaveIpIdMap, nil
 }
-
 
 // Receives an action request from server and call ActionExecutor to execute action.
 func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.MediationServerMessage) {
 	fmt.Println("--------> handleAction called")
 	//	messageID := serverMsg.GetMessageID()
-		actionRequest := serverMsg.GetActionRequest()
-		actionItemDTO := actionRequest.GetActionItemDTO()
-		glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
+	actionRequest := serverMsg.GetActionRequest()
+	actionItemDTO := actionRequest.GetActionItemDTO()
+	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
 
-		fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
-		fmt.Println("The full Url is ", fullUrl)
-		req, err := http.NewRequest("GET", fullUrl, nil)
-		fmt.Println(req)
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			glog.Errorf("Error getting response: %s", err)
-		}
-		respMap, err := createSlaveIdIpMap(resp)
-		if err != nil {
+	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
+	fmt.Println("The full Url is ", fullUrl)
+	req, err := http.NewRequest("GET", fullUrl, nil)
+	fmt.Println(req)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
-		}
+	}
+	respMap, err := createSlaveIdIpMap(resp)
+	if err != nil {
+		glog.Errorf("Error getting response: %s", err)
+	}
 	fmt.Println("Get Succeed: %v", respMap)
 	defer resp.Body.Close()
 
+	simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
+	if err != nil {
+		fmt.Printf("error %s \n", err)
+	}
+	_, err = action.RequestMesosAction(simulator)
+	if err != nil {
+		fmt.Printf("error %s \n", err)
+	}
 
-		simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
-		if err != nil {
-			fmt.Printf("error %s \n", err)
-		}
-		_, err = action.RequestMesosAction(simulator)
-		if err != nil {
-			fmt.Printf("error %s \n", err)
-		}
-
-/*
+	/*
 		err := actionExecutor.ExcuteAction(actionItemDTO, messageID)
 		if err != nil {
 			glog.Errorf("Error execute action: %s", err)
 		}
-*/
+	*/
 }
 
-func newMesosProbe() (*util.MesosAPIResponse, error) {
+func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {
 	fullUrl := "http://" + "10.10.174.91" + ":5050" + "/state"
 	fmt.Println("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
@@ -291,7 +290,7 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 	for idx := range respContent.Slaves {
 		s := respContent.Slaves[idx]
 		s.Resources.Mem = s.Resources.Mem * float64(1024)
-		s.UsedResources.Mem = s.UsedResources.Mem * float64(1024)    
+		s.UsedResources.Mem = s.UsedResources.Mem * float64(1024)
 		s.OfferedResources.Mem = s.OfferedResources.Mem * float64(1024)
 	}
 	if err != nil {
@@ -300,7 +299,7 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 	}
 	fmt.Println("Get Succeed: %v", respContent)
 	defer resp.Body.Close()
-//	resp.Body.Close()
+	//	resp.Body.Close()
 
 	fullUrl = "http://" + "10.10.174.91" + ":5050" + "/tasks"
 	fmt.Println("The tasks full Url is ", fullUrl)
@@ -332,7 +331,7 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
-	for j := range taskContent.Tasks{
+	for j := range taskContent.Tasks {
 		t := taskContent.Tasks[j]
 		t.Resources.Mem = t.Resources.Mem * float64(1024)
 	}
@@ -343,89 +342,118 @@ func newMesosProbe() (*util.MesosAPIResponse, error) {
 	// STATS
 	var mapTaskRes map[string]util.Resources
 	mapTaskRes = make(map[string]util.Resources)
-	var mapSlaveUse map[string]util.CalculatedUse
-	mapSlaveUse = make(map[string]util.CalculatedUse)
+	var mapSlaveUse map[string]*util.CalculatedUse
+	mapSlaveUse = make(map[string]*util.CalculatedUse)
 	arrM := respContent.TaskMasterAPI.Tasks
-	for j := range arrM{
-		if (arrM[j].State != "TASK_RUNNING"){
+	for j := range arrM {
+		if arrM[j].State != "TASK_RUNNING" {
 			continue
-		}else{	
+		} else {
 			for i := range respContent.Slaves {
-				s := respContent.Slaves[i] 
+				fmt.Println("=============> next slave")
+				s := respContent.Slaves[i]
 				fullUrl := "http://" + getSlaveIP(s) + ":5051" + "/monitor/statistics.json"
-        			req, err := http.NewRequest("GET", fullUrl, nil)
-      			  	req.Close = true
-        			client := &http.Client{}
-        			resp, err := client.Do(req)
-        			if err != nil {
-               				fmt.Println("Error getting response: %s", err)
-              		 		return nil, err
-        			}
-        			defer resp.Body.Close()
-        			stringResp, err := ioutil.ReadAll(resp.Body)
-        			if err != nil {
-                			fmt.Printf("error %s", err)
-        			}  
-		        	fmt.Println("response is %+v",string(stringResp))
-       				byteContent := []byte(stringResp) 
-		        	var usedRes = new([]util.Executor)
-        			err = json.Unmarshal(byteContent, &usedRes)
-		        	if (err != nil){
-                			fmt.Printf("JSON erroriiiiiiii %s", err)
-        			}	
-        			var res *util.Resources
-        			var arrOfExec []util.Executor
-		        	arrOfExec = *usedRes
-        			for i := range arrOfExec{
-		                	e := arrOfExec[i]
-                			if(e.Id == arrM[j].Id){
-                        			res = &util.Resources{
-                                			Disk: float64(0),
-                                			Mem: e.Statistics.MemLimitBytes/float64(1024.00),
-                        			        CPUs: e.Statistics.CPUsLimit,
-                        			}
+				req, err := http.NewRequest("GET", fullUrl, nil)
+				req.Close = true
+				client := &http.Client{}
+				resp, err := client.Do(req)
+				if err != nil {
+					fmt.Println("Error getting response: %s", err)
+					return nil, err
+				}
+				defer resp.Body.Close()
+				stringResp, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					fmt.Printf("error %s", err)
+				}
+				//	fmt.Println("response is %+v", string(stringResp))
+				byteContent := []byte(stringResp)
+				var usedRes = new([]util.Executor)
+				err = json.Unmarshal(byteContent, &usedRes)
+				if err != nil {
+					fmt.Printf("JSON erroriiiiiiii %s", err)
+				}
+				var res *util.Resources
+				var arrOfExec []util.Executor
+				arrOfExec = *usedRes
+				for i := range arrOfExec {
+					e := arrOfExec[i]
+					if e.Id == arrM[j].Id {
+						res = &util.Resources{
+							Disk: float64(0),
+							Mem:  e.Statistics.MemLimitBytes / float64(1024.00),
+							CPUs: e.Statistics.CPUsLimit,
+						}
 						taskId := arrM[j].Id
 						mapTaskRes[taskId] = *res
-                        			break
-               	 			}
-        			}
-			// SLAVE MONITOR
-				if val, ok := mapSlaveUse[s.Id]; !ok{
-					i := 0  // TODO sunday
+						break
+					}
+				}
+				// SLAVE MONITOR
+				if _, ok := mapSlaveUse[s.Id]; !ok {
+					i := 0 // TODO sunday
 					executor := arrOfExec[i]
 					//if first time ??
 					var prevSecs float64
+					fmt.Println("          CALCULATION START :::")
+					fmt.Printf("executor.Statistics.CPUsystemTimeSecs : %f \n", executor.Statistics.CPUsystemTimeSecs)
+					fmt.Printf("executor.Statistics.CPUuserTimeSecs :%f \n", executor.Statistics.CPUuserTimeSecs)
+
 					curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
-					if (respContent.CPUsumSystemUserSecs == nil){
-						prevSecs := curSecs	
-					}else{
-						prevSecs := respContent.CPUsumSystemUserSecs
+					if handler.lastDiscoveryTime == nil {
+						fmt.Println("last time from handler is nil")
+					}
+					if previousUseMap == nil { //CPUsumSystemUserSecs == float64(0) {
+						fmt.Println(" map was nil !!")
+						prevSecs = curSecs
+
+					} else {
+						if _, ok := previousUseMap[s.Id]; !ok {
+							fmt.Println("****** slave not found")
+							// TODO NEW SLAVES
+							continue
+						}
+						prevSecs = previousUseMap[s.Id].CPUsumSystemUserSecs
+						fmt.Printf("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
 					}
 					diffSecs := curSecs - prevSecs
-					lastTime := respContent.TimeSinceLastDisc
-					diffTime := time.Since(lastTime)
-					diffT := diffTime.Seconds()
-					usedCPUpercent :=  diffSecs/diffT
-					// ratio * cores * 1000kHz
-					usedCPU := usedCPUpercent*respContent.s.Resources.CPUs*float64(1000)
-					mapSlaveUse[s.Id] = &CalculatedUse{
-						CPUs: usedCPU,
+					fmt.Println(" t1 - t0 : %f \n", diffSecs)
+					var lastTime time.Time
+					if handler.lastDiscoveryTime == nil {
+						lastTime = time.Now()
+					} else {
+						lastTime = *handler.lastDiscoveryTime
 					}
+					diffTime := time.Since(lastTime)
+					fmt.Printf(" last time on record : %+v \n", lastTime)
+					diffT := diffTime.Seconds()
+					fmt.Printf("time since last discovery in sec : %f \n", diffT)
+					usedCPUfraction := diffSecs / diffT
+					// ratio * cores * 1000kHz
+					fmt.Printf("-------------> utilization CPU %f", usedCPUfraction)
+
+					usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
+					mapSlaveUse[s.Id] = &util.CalculatedUse{
+						CPUs:                 usedCPU,
+						CPUsumSystemUserSecs: curSecs,
+					}
+					fmt.Printf("-------------> used CPU %f", usedCPU)
 					s.Calculated.CPUs = usedCPU
 					// UPDATE stats
-					respContent.TimeSinceLastDisc = time.Now()
-					respContent.CPUsymSystemUserSecs = curSecs
-				} 	
+					timeNow := time.Now()
+					handler.lastDiscoveryTime = &timeNow
+				}
 			}
 		}
 	}
 	// map task to resources
 	respContent.MapTaskResources = mapTaskRes
+	handler.slaveUseMap = mapSlaveUse
 	respContent.SlaveUseMap = mapSlaveUse
 	return respContent, nil
 }
 
-func ParseNode(m *util.MesosAPIResponse) ([]*sdk.EntityDTO, error) {
+func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.CalculatedUse) ([]*sdk.EntityDTO, error) {
 	fmt.Printf("in ParseNode")
 	result := []*sdk.EntityDTO{}
 	for i := range m.Slaves {
@@ -434,7 +462,7 @@ func ParseNode(m *util.MesosAPIResponse) ([]*sdk.EntityDTO, error) {
 		slaveProbe := &probe.NodeProbe{
 			MasterState: m,
 		}
-		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s)
+		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s, slaveUseMap)
 		if err != nil {
 			fmt.Printf("error is : %s", err)
 			return result, err
@@ -455,8 +483,8 @@ func ParseTask(m *util.MesosAPIResponse) ([]*sdk.EntityDTO, error) {
 		taskProbe := &probe.TaskProbe{
 			Task: &taskList[i],
 		}
-		if (taskProbe.Task.State == "TASK_KILLED"){
-			continue;
+		if taskProbe.Task.State == "TASK_KILLED" {
+			continue
 		}
 		//ipAddress := slaveIdIpMap[taskProbe.Task.SlaveId]
 		//usedResources := taskProbe.GetUsedResourcesForTask(ipAddress)
@@ -554,9 +582,8 @@ func buildTaskAppEntityDTO(slaveIdIp map[string]string, task *util.Task, commodi
 	entityDto := entityDTOBuilder.Create()
 
 	appType := task.Name
-	
 
-	ipAddress := slaveIdIp[task.SlaveId]  //this.getIPAddress(host, nodeName)
+	ipAddress := slaveIdIp[task.SlaveId] //this.getIPAddress(host, nodeName)
 
 	appData := &sdk.EntityDTO_ApplicationData{
 		Type:      &appType,
@@ -596,7 +623,7 @@ func buildTaskContainerEntityDTO(slaveIdIpMap map[string]string, task *util.Task
 
 func getSlaveIP(s util.Slave) string {
 	//"slave(1)@10.10.174.92:5051"
-	var ipportArray []string	
+	var ipportArray []string
 	slaveIP := ""
 	ipLong := s.Pid
 	arr := strings.Split(ipLong, "@")
@@ -616,21 +643,20 @@ func buildVMEntityDTO(slaveIP, nodeID, displayName string, commoditiesSold []*sd
 	entityDTOBuilder.SellsCommodities(commoditiesSold)
 	// TODO stitch
 	ipAddress := slaveIP //nodeProbe.getIPForStitching(displayName)
-        entityDTOBuilder = entityDTOBuilder.SetProperty("IP", ipAddress)
-     glog.V(4).Infof("Parse node: The ip of vm to be reconcile with is %s", ipAddress) 
-         metaData := generateReconcilationMetaData()
+	entityDTOBuilder = entityDTOBuilder.SetProperty("IP", ipAddress)
+	glog.V(4).Infof("Parse node: The ip of vm to be reconcile with is %s", ipAddress)
+	metaData := generateReconcilationMetaData()
 
-         entityDTOBuilder = entityDTOBuilder.ReplacedBy(metaData)
-         entityDto := entityDTOBuilder.Create()
-         return entityDto
- }
-	
+	entityDTOBuilder = entityDTOBuilder.ReplacedBy(metaData)
+	entityDto := entityDTOBuilder.Create()
+	return entityDto
+}
 
 func generateReconcilationMetaData() *sdk.EntityDTO_ReplacementEntityMetaData {
-         replacementEntityMetaDataBuilder := sdk.NewReplacementEntityMetaDataBuilder()
-         replacementEntityMetaDataBuilder.Matching("IP")
-         replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CPU_ALLOCATION)
-         replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_MEM_ALLOCATION)
+	replacementEntityMetaDataBuilder := sdk.NewReplacementEntityMetaDataBuilder()
+	replacementEntityMetaDataBuilder.Matching("IP")
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CPU_ALLOCATION)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_MEM_ALLOCATION)
 	metaData := replacementEntityMetaDataBuilder.Build()
 	return metaData
 }
