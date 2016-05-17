@@ -18,11 +18,12 @@ type TaskResourceStat struct {
 type TaskProbe struct {
 	Task *util.Task
 }
+
 /*
 func parseUsedResources(taskId string, resp *http.Response) *util.Resources{
 	content, err := ioutil.ReadAll(resp.Body)
 	byteContent := []byte(content)
-	
+
 	var usedRes = new([]util.Executor)
 //	err := json.NewDecoder(resp.Body).Decode(&usedRes)
 	err = json.Unmarshal(byteContent, &usedRes)
@@ -62,7 +63,7 @@ func (probe *TaskProbe) GetUsedResourcesForTask(ipAddress string) *util.Resource
 	stringResp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("error %s", err)
-	}  
+	}
 	fmt.Println("response is %+v",string(stringResp))
 	used := parseUsedResources(probe.Task.Id, resp)
 	return used
@@ -70,12 +71,12 @@ func (probe *TaskProbe) GetUsedResourcesForTask(ipAddress string) *util.Resource
 */
 
 // Get current stat of node resources, such as capacity and used values.
-func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Resources, task *util.Task) (*TaskResourceStat, error) {
+func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, task *util.Task, taskUseMap map[string]*util.CalculatedUse) (*TaskResourceStat, error) {
 	// TODO! Here we assume when user defines a pod, resource requirements are also specified.
 	// The metrics we care about now are Cpu and Mem.
 	//requests := task.Resources.Limits
-	memCapacity := task.Resources.Mem
-	cpuCapacity := task.Resources.CPUs
+	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
+	cpuCapacity := task.Resources.CPUs * float64(1000.00)
 
 	fmt.Println("Discovered task is " + task.Id)
 	fmt.Printf("Container capacity is %f \n", cpuCapacity)
@@ -85,8 +86,14 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Resources, task
 	//	if localTestingFlag {
 	//		cpuUsed = float64(10000)
 	//	}
-	cpuUsed :=  mapT[task.Id].Mem
-	memUsed :=  mapT[task.Id].CPUs
+	if taskUseMap != nil {
+		fmt.Printf(" task used map is %+v and value is %+v \n", taskUseMap, taskUseMap[task.Id])
+
+	} else {
+		fmt.Println("task map is nil")
+	}
+	memUsed := mapT[task.Id].MemRSSBytes / float64(1024.00)
+	cpuUsed := taskUseMap[task.Id].CPUs
 
 	return &TaskResourceStat{
 		cpuAllocationCapacity: cpuCapacity,
@@ -153,12 +160,12 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	containerProvider := sdk.CreateProvider(sdk.EntityDTO_CONTAINER, containerName)
 	var commoditiesBought []*sdk.CommodityDTO
 	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key(containerName).
+		Key("Container").
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
 	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key(containerName).
+		Key("Container").
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)

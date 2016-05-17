@@ -48,9 +48,12 @@ type MesosAPIResponse struct {
 	//Frameworks        []Framework `json:"frameworks"`
 	TaskMasterAPI     MasterTasks
 	SlaveIdIpMap      map[string]string
-	MapTaskResources  map[string]Resources
+	MapTaskStatistics map[string]Statistics
+	//Monitor
 	TimeSinceLastDisc *time.Time
 	SlaveUseMap       map[string]*CalculatedUse
+	// TODO use this?
+	MapSlaveToTasks map[string][]Task
 }
 
 type ContDocker struct {

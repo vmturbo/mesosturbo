@@ -35,8 +35,8 @@ const (
 )
 
 type VMTMeta struct {
-	MesosActionIP	   string
-	MesosActionPort	   string
+	MesosActionIP      string
+	MesosActionPort    string
 	ServerAddress      string
 	TargetType         string
 	NameOrAddress      string
@@ -70,6 +70,18 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 
 	glog.V(4).Infof("Now read configration from %s", metaConfigFilePath)
 	metaConfig := readConfig(metaConfigFilePath)
+
+	if metaConfig.MesosActionIP != "" {
+		meta.MesosActionIP = metaConfig.MesosActionIP
+	} else {
+		return nil, fmt.Errorf("Error getting LayerX Master.")
+	}
+
+	if metaConfig.MesosActionPort != "" {
+		meta.MesosActionPort = metaConfig.MesosActionPort
+	} else {
+		return nil, fmt.Errorf("Error getting LayerX Master.")
+	}
 
 	if metaConfig.ServerAddress != "" {
 		meta.ServerAddress = metaConfig.ServerAddress

@@ -7,7 +7,7 @@
 		"username":"mesos_user",
 		"targetidentifier": "my_mesos",
 		"password":"fake_password",
-		"localaddress":"http://10.10.174.91/",
+		"localaddress":"http://10.10.174.96/",
 		"websocketusername": "vmtRemoteMediation",
 		"websocketpassword": "vmtRemoteMediation",
 		"opsmanagerusername": "administrator",
