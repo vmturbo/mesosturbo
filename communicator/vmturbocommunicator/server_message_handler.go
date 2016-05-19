@@ -55,7 +55,7 @@ func (handler *MesosServerMessageHandler) DiscoverTarget() {
 }
 
 // If server sends a validation request, validate the request.
-// TODO, for now k8s validate all the request. aka, no matter what usr/passwd is provided, always pass validation.
+// TODO Validate all the request. aka, no matter what usr/passwd is provided, always pass validation.
 // The correct bahavior is to set ErrorDTO when validation fails.
 func (handler *MesosServerMessageHandler) Validate(serverMsg *comm.MediationServerMessage) {
 	//Always send Validated for now
@@ -172,6 +172,7 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 						break
 					}
 				}
+				fmt.Println(" destination IP is %s and task is  %s \n", slaveId, containerId)
 				return &action.MesosClient{
 					MesosMasterIP:   handler.meta.MesosActionIP,
 					MesosMasterPort: handler.meta.MesosActionPort,
@@ -391,16 +392,12 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 				if handler.lastDiscoveryTime == nil {
 					fmt.Println("last time from handler is nil")
 				}
-				if previousUseMap == nil { //CPUsumSystemUserSecs == float64(0) {
+				_, ok := previousUseMap[taskId]
+				if previousUseMap == nil || !ok {
 					fmt.Println(" map was nil !!")
 					prevSecs = curSecs
 
 				} else {
-					if _, ok := previousUseMap[taskId]; !ok {
-						fmt.Println("****** slave not found")
-						// TODO NEW SLAVES
-						continue
-					}
 					prevSecs = previousUseMap[taskId].CPUsumSystemUserSecs
 					fmt.Printf("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
 				}
@@ -748,6 +745,9 @@ func generateReconcilationMetaData() *sdk.EntityDTO_ReplacementEntityMetaData {
 	replacementEntityMetaDataBuilder.Matching("IP")
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CPU_ALLOCATION)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_MEM_ALLOCATION)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VCPU)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VMEM)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_APPLICATION)
 	metaData := replacementEntityMetaDataBuilder.Build()
 	return metaData
 }

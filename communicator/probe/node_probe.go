@@ -82,7 +82,6 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 	if err != nil {
 		return commoditiesSold, err
 	}
-	nodeID := slaveInfo.Id
 
 	//TODO: create const value for keys
 	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
@@ -98,19 +97,17 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
 	vMemComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(nodeID).
 		Capacity(nodeResourceStat.vMemCapacity).
 		Used(nodeResourceStat.vMemUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vMemComm)
 	vCpuComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(nodeID).
 		Capacity(float64(nodeResourceStat.vCpuCapacity)).
 		Used(nodeResourceStat.vCpuUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vCpuComm)
 	appComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
-		Key(nodeID).
+		Key(slaveInfo.Id).
 		Create()
 	commoditiesSold = append(commoditiesSold, appComm)
 	//	labelsmap := node.ObjectMeta.Labels

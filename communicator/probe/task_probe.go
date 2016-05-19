@@ -105,16 +105,15 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 
 // Build commodityDTOs for commodity sold by the pod
 func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
-	containerName := task.Id
 	var commoditiesSold []*sdk.CommodityDTO
 	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key(containerName).
+		Key(task.Id).
 		Capacity(float64(taskResourceStat.memAllocationCapacity)).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, memAllocationComm)
 	cpuAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key(containerName).
+		Key(task.Id).
 		Capacity(float64(taskResourceStat.cpuAllocationCapacity)).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
@@ -160,12 +159,12 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	containerProvider := sdk.CreateProvider(sdk.EntityDTO_CONTAINER, containerName)
 	var commoditiesBought []*sdk.CommodityDTO
 	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key("Container").
+		Key(task.Id).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
 	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key("Container").
+		Key(task.Id).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
@@ -176,13 +175,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
 	vCpuCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(task.SlaveId).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vCpuCommBought)
 
 	vMemCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(task.SlaveId).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vMemCommBought)

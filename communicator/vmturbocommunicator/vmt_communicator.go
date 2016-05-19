@@ -120,7 +120,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
 
-	// Pod Supplychain builder
+	// Container Supplychain builder
 	containerSupplyChainNodeBuilder := sdk.NewSupplyChainNodeBuilder()
 	containerSupplyChainNodeBuilder = containerSupplyChainNodeBuilder.
 		Entity(sdk.EntityDTO_CONTAINER).
