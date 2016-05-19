@@ -15,8 +15,12 @@ func main() {
 		fmt.Printf("error %s \n", err)
 	}
 	//	actor := action.RequestMesosAction(simulator.MesosClient())
-	_, err = action.RequestMesosAction(simulator)
+	pending, err := action.RequestPendingTasks(simulator)
 	if err != nil {
 		fmt.Printf("error %s \n", err)
+	}
+	for i := range pending {
+		fmt.Printf("pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
+
 	}
 }

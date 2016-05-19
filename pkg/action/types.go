@@ -15,6 +15,6 @@ type TaskProvider struct {
 type PendingTask struct {
 	TaskProvider   TaskProvider
 	Kill_requested bool
-	Name           string
-	Id             string
+	Name           string `json:"name"`
+	Id             string `json:"task_id"`
 }
