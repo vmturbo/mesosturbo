@@ -70,3 +70,26 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 
 	return string(body), nil
 }
+
+func RequestPendingTasks(mesosClient *MesosClient) []*PendingTask {
+	// 10.10.174.96:5555/GetPendingTasks
+	baseUrl := "http://" + mesosClient.MesosMasterIP + ":" + mesosClient.MesosMasterPort + "/" + "GetPendingTasks"
+	//fullUrl := baseUrl + "destination_node_id=32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0&task_ids=basic-0.6432abd7-179f-11e6-9521-52540006b4aa"
+	fmt.Println(" --> The full Url is ", baseUrl)
+	req, err := http.NewRequest("GET", baseUrl, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf(" --> error %s \n", err)
+	}
+	var pendingTasks = make([]*PendingTask)
+	byteContent := []byte(resp)
+	err = json.Unmarshal(byteContent, &pendingTasks)
+	if err != nil {
+		fmt.Printf("JSON error in getPendingTasks %s", err)
+	}
+	var pendingTaskArray []*PendingTask
+	pendingTaskArray = pendingTasks
+	defer resp.Body.Close()
+	return pendingTaskArray
+}
