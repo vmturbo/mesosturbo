@@ -13,7 +13,6 @@ import (
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -190,7 +189,8 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 	return nil, fmt.Errorf("Missing data for move")
 }
 
-func createSlaveIdIpMap(resp *http.Response) (map[string]string, error) {
+/*
+func CreateSlaveIpIdMap(resp *http.Response) (map[string]string, error) {
 	fmt.Println("----> in parseAPICallResponse")
 	if resp == nil {
 		return nil, fmt.Errorf("response sent in is nil")
@@ -223,7 +223,7 @@ func createSlaveIdIpMap(resp *http.Response) (map[string]string, error) {
 	}
 	return SlaveIpIdMap, nil
 }
-
+*/
 // Receives an action request from server and call ActionExecutor to execute action.
 func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.MediationServerMessage) {
 	fmt.Println("--------> handleAction called")
@@ -241,11 +241,11 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	respMap, err := createSlaveIdIpMap(resp)
+	respMap, err := util.CreateSlaveIpIdMap(resp)
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	fmt.Println("Get Succeed: %v", respMap)
+	fmt.Println("Get Succeed in server handler line 248: %v", respMap)
 	defer resp.Body.Close()
 
 	simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
@@ -342,7 +342,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	for i := range respContent.Slaves {
 		fmt.Println("=============> next slave")
 		s := respContent.Slaves[i]
-		fullUrl := "http://" + getSlaveIP(s) + ":5051" + "/monitor/statistics.json"
+		fullUrl := "http://" + util.GetSlaveIP(s) + ":5051" + "/monitor/statistics.json"
 		req, err := http.NewRequest("GET", fullUrl, nil)
 		req.Close = true
 		client := &http.Client{}
@@ -552,7 +552,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 			fmt.Printf("error is : %s", err)
 			return result, err
 		}
-		slaveIP := getSlaveIP(s)
+		slaveIP := util.GetSlaveIP(s)
 		m.SlaveIdIpMap[s.Id] = slaveIP
 		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name, commoditiesSold)
 		result = append(result, entityDTO)
@@ -707,22 +707,6 @@ func buildTaskContainerEntityDTO(slaveIdIpMap map[string]string, task *util.Task
 
 	entityDto := entityDTOBuilder.Create()
 	return entityDto, nil
-}
-
-func getSlaveIP(s util.Slave) string {
-	//"slave(1)@10.10.174.92:5051"
-	var ipportArray []string
-	slaveIP := ""
-	ipLong := s.Pid
-	arr := strings.Split(ipLong, "@")
-	if len(arr) > 1 {
-		ipport := arr[1]
-		ipportArray = strings.Split(ipport, ":")
-	}
-	if len(ipportArray) > 0 {
-		slaveIP = ipportArray[0]
-	}
-	return slaveIP
 }
 
 func buildVMEntityDTO(slaveIP, nodeID, displayName string, commoditiesSold []*sdk.CommodityDTO) *sdk.EntityDTO {

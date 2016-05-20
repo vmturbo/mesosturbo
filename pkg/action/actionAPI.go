@@ -50,6 +50,7 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 	if mesosClient.Action == "AssignTasks" {
 		jsonStr = []byte(`{"node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
 	}
+	fmt.Printf("payload is :  %+v \n", `{"node_id":"`+mesosClient.DestinationId+`", "task_ids": ["`+mesosClient.TaskId+`"]}`)
 	req, err := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonStr))
 	req.Header.Set("X-Custom-Header", "myvalue")
 	req.Header.Set("Content-Type", "application/json")

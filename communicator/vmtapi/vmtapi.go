@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
+	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
 	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	"io/ioutil"
 	"net/http"
@@ -223,17 +224,13 @@ func getTemplateSize(pendingtask *action.PendingTask) string {
 	taskMem := pendingtask.Mem
 	if taskCPU < TEMPLATE_CPU_TINY || taskMem < TEMPLATE_MEM_TINY {
 		template = TEMPLATE_TINY_UUID
-	}
-	if taskCPU < TEMPLATE_CPU_MICRO || taskMem < TEMPLATE_MEM_MICRO {
+	} else if taskCPU < TEMPLATE_CPU_MICRO || taskMem < TEMPLATE_MEM_MICRO {
 		template = TEMPLATE_MICRO_UUID
-	}
-	if taskCPU < TEMPLATE_CPU_SMALL || taskMem < TEMPLATE_MEM_SMALL {
+	} else if taskCPU < TEMPLATE_CPU_SMALL || taskMem < TEMPLATE_MEM_SMALL {
 		template = TEMPLATE_SMALL_UUID
-	}
-	if taskCPU < TEMPLATE_CPU_MEDIUM || taskMem < TEMPLATE_MEM_MEDIUM {
+	} else if taskCPU < TEMPLATE_CPU_MEDIUM || taskMem < TEMPLATE_MEM_MEDIUM {
 		template = TEMPLATE_MEDIUM_UUID
-	}
-	if taskCPU < TEMPLATE_CPU_LARGE || taskMem < TEMPLATE_MEM_LARGE {
+	} else if taskCPU < TEMPLATE_CPU_LARGE || taskMem < TEMPLATE_MEM_LARGE {
 		template = TEMPLATE_LARGE_UUID
 	}
 	return template
@@ -343,12 +340,28 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
 		}*/
-	dest, err := GetPodReservationDestination(getResponse)
+	dest, err := GetTaskReservationDestination(getResponse)
+	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
+	fmt.Println("The full Url is ", fullUrl)
+	req, err := http.NewRequest("GET", fullUrl, nil)
+	fmt.Println(req)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		glog.Errorf("Error getting response: %s", err)
+	}
+	respMap, err := util.CreateSlaveIpIdMap(resp)
+	if err != nil {
+		glog.Errorf("Error getting response: %s", err)
+	}
+	fmt.Println("Get Succeed: %v", respMap)
+	defer resp.Body.Close()
+
 	if err != nil {
 		fmt.Println("error line 342 vmtapi")
 	}
 	fmt.Printf("destination is: %s", dest)
-	return dest, nil
+	return respMap[dest], nil
 }
 
 // TODO change
@@ -388,7 +401,7 @@ func decodeReservationResponse(content string) (*ServiceEntities, error) {
 	return se, nil
 }
 
-func GetPodReservationDestination(content string) (string, error) {
+func GetTaskReservationDestination(content string) (string, error) {
 	se, err := decodeReservationResponse(content)
 	if err != nil {
 		return "", err
@@ -407,7 +420,7 @@ func parseGetReservationResponse(podName, content string) (map[string]string, er
 		return nil, fmt.Errorf("No valid reservation result.")
 	}
 	// Decode reservation content.
-	dest, err := GetPodReservationDestination(content)
+	dest, err := GetTaskReservationDestination(content)
 	if err != nil {
 		return nil, err
 	}
@@ -422,5 +435,38 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 	return &VmtApi{
 		vmtUrl:    url,
 		extConfig: externalConfiguration,
+	}
+}
+
+func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
+
+	for {
+		time.Sleep(time.Second * 20)
+		pending, err := action.RequestPendingTasks(client)
+		if err != nil {
+			fmt.Printf("error %s \n", err)
+		}
+
+		if len(pending) > 0 {
+			var taskDestinationMap = make(map[string]string)
+			var newreservation *Reservation
+			for i := range pending {
+				fmt.Printf("pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
+				newreservation = &Reservation{
+					Meta: mesosmetadata,
+				}
+				name := pending[i].Name
+				taskDestinationMap[name] = newreservation.GetVMTReservation(pending[i])
+				// assign Tasks
+				client.Action = "AssignTasks"
+				client.DestinationId = taskDestinationMap[name]
+				client.TaskId = pending[i].Id
+				res, err := action.RequestMesosAction(client)
+				if err != nil {
+					fmt.Printf("error %s \n", err)
+				}
+				fmt.Printf("result is : %s \n", res)
+			}
+		}
 	}
 }
