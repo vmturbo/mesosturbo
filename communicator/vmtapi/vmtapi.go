@@ -243,6 +243,7 @@ func GetRequestTaskSpec(task *action.PendingTask) map[string]string {
 	// TODO for sdk how to get size for pod vs task
 	templateUUIDs := getTemplateSize(task)
 	requestMap := make(map[string]string)
+	// TODO this name is not supposed to be hardcoded , same for Kubeturbo
 	requestMap["reservation_name"] = "MesosReservationTest"
 	requestMap["num_instances"] = "1"
 	requestMap["template_name"] = templateUUIDs
