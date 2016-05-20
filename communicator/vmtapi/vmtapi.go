@@ -2,12 +2,32 @@ package api
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
+	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"time"
 )
+
+var TEMPLATE_CPU_TINY = float64(1.0)
+var TEMPLATE_MEM_TINY = float64(512.0)
+var TEMPLATE_CPU_MICRO = float64(1.0)
+var TEMPLATE_MEM_MICRO = float64(1024.0)
+var TEMPLATE_CPU_SMALL = float64(1.0)
+var TEMPLATE_MEM_SMALL = float64(2048.0)
+var TEMPLATE_CPU_MEDIUM = float64(2.0)
+var TEMPLATE_MEM_MEDIUM = float64(4096.0)
+var TEMPLATE_CPU_LARGE = float64(2.0)
+var TEMPLATE_MEM_LARGE = float64(8192.0)
+var TEMPLATE_TINY_UUID = "DC5_1CxZMJkghjCaJOYu5"
+var TEMPLATE_MICRO_UUID = "DC5_1CxZMJfgejCaJOYu5"
+var TEMPLATE_SMALL_UUID = "DC5_1CxZMJkbfjCaJOYu5"
+var TEMPLATE_MEDIUM_UUID = "DC5_1CxgeJkEEeCaJOYu5"
+var TEMPLATE_LARGE_UUID = "DC5_1CxZMJkEEeCaJOYu5"
 
 type VmtApi struct {
 	vmtUrl    string
@@ -98,6 +118,7 @@ func (vmtApi *VmtApi) Delete(getUrl string) (string, error) {
 func (vmtApi *VmtApi) apiPost(postUrl, requestDataString string) (string, error) {
 	fullUrl := "http://" + vmtApi.vmtUrl + "/vmturbo/api" + postUrl + requestDataString
 	glog.V(4).Info("The full Url is ", fullUrl)
+	fmt.Printf("The full Url is ", fullUrl)
 	req, err := http.NewRequest("POST", fullUrl, nil)
 
 	req.SetBasicAuth(vmtApi.extConfig["Username"], vmtApi.extConfig["Password"])
@@ -185,30 +206,46 @@ func parseAPICallResponse(resp *http.Response) (string, error) {
 	return string(content), nil
 }
 
-func (r *Reservation) GetVMTReservation(task *util.Task) map[string]string {
+func (r *Reservation) GetVMTReservation(task *action.PendingTask) string {
 	taskSpec := GetRequestTaskSpec(task)
 	reservationResult, err := r.RequestPlacement(task.Name, taskSpec, nil)
-
+	fmt.Printf(" -----> Requesting for task %s and spec %+v \n", task.Name, taskSpec)
+	if err != nil {
+		fmt.Printf("error in get Reservation line 214  %s\n", err)
+	}
+	return reservationResult
 }
 
 // TODO for SDK ?
-func getTemplateSize(task *util.Task) string {
+func getTemplateSize(pendingtask *action.PendingTask) string {
 	template := ""
-	taskCPU := "2"
-	taskMem := "2000"
+	taskCPU := pendingtask.CPUs
+	taskMem := pendingtask.Mem
 	if taskCPU < TEMPLATE_CPU_TINY || taskMem < TEMPLATE_MEM_TINY {
 		template = TEMPLATE_TINY_UUID
+	}
+	if taskCPU < TEMPLATE_CPU_MICRO || taskMem < TEMPLATE_MEM_MICRO {
+		template = TEMPLATE_MICRO_UUID
+	}
+	if taskCPU < TEMPLATE_CPU_SMALL || taskMem < TEMPLATE_MEM_SMALL {
+		template = TEMPLATE_SMALL_UUID
+	}
+	if taskCPU < TEMPLATE_CPU_MEDIUM || taskMem < TEMPLATE_MEM_MEDIUM {
+		template = TEMPLATE_MEDIUM_UUID
+	}
+	if taskCPU < TEMPLATE_CPU_LARGE || taskMem < TEMPLATE_MEM_LARGE {
+		template = TEMPLATE_LARGE_UUID
 	}
 	return template
 }
 
-func GetRequestTaskSpec(task *util.Task) map[string]strinig {
+func GetRequestTaskSpec(task *action.PendingTask) map[string]string {
 	// TODO for sdk how to get size for pod vs task
 	templateUUIDs := getTemplateSize(task)
 	requestMap := make(map[string]string)
 	requestMap["reservation_name"] = "MesosReservationTest"
 	requestMap["num_instances"] = "1"
-	requestMap["templateName"] = templateUUIDs
+	requestMap["template_name"] = templateUUIDs
 	requestMap["templateUuids[]"] = templateUUIDs
 	return requestMap
 }
@@ -265,45 +302,119 @@ func buildReservationParameterString(requestSpec map[string]string) (string, err
 // put this in SDK TODO Pam Thursday
 // Create the reservation specification and
 // return map which has container name as key and slave name as value
-func (this *Reservation) RequestPlacement(containerName string, requestSpec, filterProperties map[string]string) (map[string]string, error) {
+func (this *Reservation) RequestPlacement(containerName string, requestSpec, filterProperties map[string]string) (string, error) {
 	extCongfix := make(map[string]string)
 	extCongfix["Username"] = this.Meta.OpsManagerUsername
 	extCongfix["Password"] = this.Meta.OpsManagerPassword
-	vmturboApi := vmtapi.NewVmtApi(this.Meta.ServerAddress, extCongfix)
+	vmturboApi := NewVmtApi(this.Meta.ServerAddress, extCongfix)
 
 	glog.V(4).Info("Inside RequestPlacement")
 	fmt.Println("inside RequestPlacement")
 	parameterString, err := buildReservationParameterString(requestSpec)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
+	fmt.Printf("parameterString %s", parameterString)
 	reservationUUID, err := vmturboApi.Post("/reservations", parameterString)
 	if err != nil {
-		return nil, fmt.Errorf("Error posting reservations: %s", err)
+		return "", fmt.Errorf("Error posting reservations: %s", err)
 	}
 	reservationUUID = strings.Replace(reservationUUID, "\n", "", -1)
 	glog.V(3).Infof("Reservation UUID is %s", string(reservationUUID))
 
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
 	time.Sleep(2 * time.Second)
+	fmt.Printf("reserve UUID  %s", reservationUUID)
 	getResponse, getRevErr := vmturboApi.Get("/reservations/" + reservationUUID)
 	// After getting the destination, delete the reservation.
-	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
-	if err != nil {
-		// TODO, Should we return without placement?
-		return nil, fmt.Errorf("Error deleting reservations destinations: %s", err)
-	}
-	glog.V(4).Infof("delete response of reservation %s is %s", reservationUUID, deleteResponse)
+	fmt.Println("get response is %+v", getResponse)
+	//	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
+	//	if err != nil {
+	//		// TODO, Should we return without placement?
+	//		return "", fmt.Errorf("Error deleting reservations destinations: %s", err)
+	//	}
+	//	glog.V(4).Infof("delete response of reservation %s is %s", reservationUUID, deleteResponse)
 	if getRevErr != nil {
-		return nil, fmt.Errorf("Error getting reservations destinations: %s", err)
+		return "", fmt.Errorf("Error getting reservations destinations: %s", err)
 	}
-	pod2nodeMap, err := parseGetReservationResponse(podName, getResponse)
+	/*
+		containerToSlaveMap, err := parseGetReservationResponse(containerName, getResponse)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
+		}*/
+	dest, err := GetPodReservationDestination(getResponse)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
+		fmt.Println("error line 342 vmtapi")
+	}
+	fmt.Printf("destination is: %s", dest)
+	return dest, nil
+}
+
+// TODO change
+type ServiceEntities struct {
+	XMLName     xml.Name     `xml:"ServiceEntities"`
+	ActionItems []ActionItem `xml:"ActionItem"`
+}
+type ActionItem struct {
+	Datastore      string `xml:"datastore,attr"`
+	DataStoreState string `xml:"datastoreState,attr"`
+	Host           string `xml:"host,attr"`
+	HostState      string `xml:"hostState,attr"`
+	Name           string `xml:"name,attr"`
+	Status         string `xml:"status,attr"`
+	User           string `xml:"user,attr"`
+	Vdc            string `xml:"vdc,attr"`
+	VdcState       string `xml:"vdcState,attr"`
+	VM             string `xml:"vm,attr"`
+	VMState        string `xml:"vmState,attr"`
+}
+
+func decodeReservationResponse(content string) (*ServiceEntities, error) {
+	// This is a temp solution. delete the encoding header.
+	validStartIndex := strings.Index(content, ">")
+	validContent := content[validStartIndex:]
+
+	se := &ServiceEntities{}
+	err := xml.Unmarshal([]byte(validContent), se)
+	if err != nil {
+		return nil, fmt.Errorf("Error decoding content: %s", err)
+	}
+	if se == nil {
+		return nil, fmt.Errorf("Error decoding content. Result is null.")
+	} else if len(se.ActionItems) < 1 {
+		return nil, fmt.Errorf("Error decoding content. No ActionItem.")
+	}
+	return se, nil
+}
+
+func GetPodReservationDestination(content string) (string, error) {
+	se, err := decodeReservationResponse(content)
+	if err != nil {
+		return "", err
+	}
+	if se.ActionItems[0].VM == "" {
+		return "", fmt.Errorf("Reservation destination get from VMT server is null.")
 	}
 
-	return pod2nodeMap, nil
+	// Now only support a single reservation each time.
+	return se.ActionItems[0].VM, nil
+}
+
+// this method takes in a http get response for reservation and should return the reservation uuid, if there is any
+func parseGetReservationResponse(podName, content string) (map[string]string, error) {
+	if content == "" {
+		return nil, fmt.Errorf("No valid reservation result.")
+	}
+	// Decode reservation content.
+	dest, err := GetPodReservationDestination(content)
+	if err != nil {
+		return nil, err
+	}
+	glog.V(3).Infof("Deploy destination for Pod %s is %s", podName, dest)
+	// TODO should parse the content. Currently don't know the correct get response content.
+	pod2NodeMap := make(map[string]string)
+	pod2NodeMap[podName] = dest
+	return pod2NodeMap, nil
 }
 
 func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {

@@ -43,7 +43,13 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 		b, err := json.Marshal(m)
 		var jsonStr = []byte(b)
 	*/
-	var jsonStr = []byte(`{"destination_node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
+	var jsonStr []byte
+	if mesosClient.Action == "MigrateTasks" {
+		jsonStr = []byte(`{"destination_node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
+	}
+	if mesosClient.Action == "AssignTasks" {
+		jsonStr = []byte(`{"node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
+	}
 	req, err := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonStr))
 	req.Header.Set("X-Custom-Header", "myvalue")
 	req.Header.Set("Content-Type", "application/json")
