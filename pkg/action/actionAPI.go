@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type migration struct {
@@ -14,20 +15,9 @@ type migration struct {
 }
 
 func RequestMesosAction(mesosClient *MesosClient) (string, error) {
-
 	baseUrl := "http://" + mesosClient.MesosMasterIP + ":" + mesosClient.MesosMasterPort + "/" + mesosClient.Action + "?"
 	//fullUrl := baseUrl + "destination_node_id=32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0&task_ids=basic-0.6432abd7-179f-11e6-9521-52540006b4aa"
 	fmt.Println(" --> The full Url is ", baseUrl)
-	/*
-		str := "\"" + mesosClient.TaskId + "\""
-		taskid := []string{str}                         //"basic-0.b34401b2-1844-11e6-bafb-52540006b4aa"}
-		node := "\"" + mesosClient.DestinationId + "\"" //"32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0"
-
-		m := migration{node, taskid}
-		fmt.Printf("payload is : %+v \n", m)
-		b, err := json.Marshal(m)
-		var jsonStr = []byte(b)
-	*/
 	var jsonStr []byte
 	if mesosClient.Action == "MigrateTasks" {
 		jsonStr = []byte(`{"destination_node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
@@ -47,7 +37,9 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 	defer resp.Body.Close()
 	fmt.Printf("----> request is : %+v\n", req)
 	fmt.Printf("response status %s Headers: %s \n", resp.Header, resp.Status)
-
+	if !strings.Contains(resp.Header.Get("Status"), "202 Accepted") {
+		fmt.Println("Error while migrating tasks \n")
+	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 	return string(body), nil

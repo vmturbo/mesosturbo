@@ -341,7 +341,7 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
 	if err != nil {
 		// TODO, Should we return without placement?
-		return "", fmt.Errorf("Error deleting reservations destinations: %s", err)
+		return "", fmt.Errorf("Error deleting reservations destinations: %s response is : %s \n", err, deleteResponse)
 	}
 	//	glog.V(4).Infof("delete response of reservation %s is %s", reservationUUID, deleteResponse)
 	if getRevErr != nil {

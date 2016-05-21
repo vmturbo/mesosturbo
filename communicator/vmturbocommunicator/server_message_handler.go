@@ -98,6 +98,10 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	// 2. Build discoverResponse
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
+	if err != nil {
+		glog.Errorf("Error getting state from master : %s", err)
+		return
+	}
 	res := mesosProbe.Slaves[0].Resources
 	fmt.Printf("at Discover topology: disk %f, mem %f , cpu %f  \n", res.Disk, res.Mem, res.CPUs)
 	nodeEntityDtos, err := ParseNode(mesosProbe, handler.slaveUseMap)
