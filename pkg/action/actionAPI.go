@@ -1,27 +1,12 @@
 package action
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	//	"github.com/golang/glog"
-	//	vmtmeta "github.com/pamelasanchezvi/communicator/metadata"
-	//	"github.com/pamelasanchezvi/communicator/util"
-	//	"github.com/vmturbo/vmturbo-go-sdk/sdk"
-	"bytes"
 	"io/ioutil"
 	"net/http"
 )
-
-/*
-type recordingTransport struct {
-	req *http.Request
-}
-
-func (t *recordingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	t.req = req
-	return nil, errors.New("dummy impl")
-}
-*/
 
 type migration struct {
 	destination_node_id string
@@ -56,13 +41,6 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	/*	form := url.Values{}
-		form.Set("destination_node_id", "32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0")
-		form.Set("task_ids", "basic-0.b34401b2-1844-11e6-bafb-52540006b4aa")
-
-		fmt.Println(" ")
-		resp, err := http.PostForm(baseUrl,form)
-	*/
 	if err != nil {
 		fmt.Printf(" --> error %s \n", err)
 	}
@@ -72,9 +50,6 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
-	//	fmt.Println("Get Succeed: %v", respContent)
-	//	defer resp.Body.Close()
-
 	return string(body), nil
 }
 

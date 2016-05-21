@@ -30,11 +30,13 @@ var TEMPLATE_SMALL_UUID = "DC5_1CxZMJkbfjCaJOYu5"
 var TEMPLATE_MEDIUM_UUID = "DC5_1CxgeJkEEeCaJOYu5"
 var TEMPLATE_LARGE_UUID = "DC5_1CxZMJkEEeCaJOYu5"
 
+// api information for requests to VMT server
 type VmtApi struct {
 	vmtUrl    string
 	extConfig map[string]string
 }
 
+// Metadata from configuration file
 type Reservation struct {
 	Meta *metadata.VMTMeta
 }
@@ -43,9 +45,9 @@ const (
 	logger = "VMTurbo API"
 )
 
-// Add a Kuberenets target to vmt ops manager
+// Add a Mesos target to vmt ops manager
 // example : http://localhost:8400/vmturbo/api/externaltargets?
-//                     type=Kubernetes&nameOrAddress=10.10.150.2&username=AAA&targetIdentifier=A&password=Sysdreamworks123
+//                     type=Mesos&nameOrAddress=10.10.150.2&username=AAA&targetIdentifier=A&password=Sysdreamworks123
 func (vmtApi *VmtApi) AddMesosTarget(targetType, nameOrAddress, username, targetIdentifier, password string) error {
 	glog.V(3).Infof("Calling VMTurbo REST API to added current %s target.", targetType)
 
@@ -207,17 +209,18 @@ func parseAPICallResponse(resp *http.Response) (string, error) {
 	return string(content), nil
 }
 
-func (r *Reservation) GetVMTReservation(task *action.PendingTask) string {
+func (r *Reservation) GetVMTReservation(task *action.PendingTask) (string, error) {
 	taskSpec := GetRequestTaskSpec(task)
 	reservationResult, err := r.RequestPlacement(task.Name, taskSpec, nil)
 	fmt.Printf(" -----> Requesting for task %s and spec %+v \n", task.Name, taskSpec)
 	if err != nil {
 		fmt.Printf("error in get Reservation line 214  %s\n", err)
+		return "", err
 	}
-	return reservationResult
+	return reservationResult, nil
 }
 
-// TODO for SDK ?
+// TODO for SDK
 func getTemplateSize(pendingtask *action.PendingTask) string {
 	template := ""
 	taskCPU := pendingtask.CPUs
@@ -320,17 +323,26 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	reservationUUID = strings.Replace(reservationUUID, "\n", "", -1)
 	glog.V(3).Infof("Reservation UUID is %s", string(reservationUUID))
 
+	var getResponse string
+	var getRevErr error
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
-	time.Sleep(2 * time.Second)
-	fmt.Printf("reserve UUID  %s", reservationUUID)
-	getResponse, getRevErr := vmturboApi.Get("/reservations/" + reservationUUID)
-	// After getting the destination, delete the reservation.
-	fmt.Println("get response is %+v", getResponse)
-	//	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
-	//	if err != nil {
-	//		// TODO, Should we return without placement?
-	//		return "", fmt.Errorf("Error deleting reservations destinations: %s", err)
-	//	}
+	for counter := 0; counter < 10; counter++ {
+		time.Sleep(2 * time.Second)
+		fmt.Printf("reserve UUID  %s", reservationUUID)
+		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
+		if getRevErr == nil {
+			fmt.Printf("Got a reservation destination! \n")
+			break
+		} else {
+			// handle the fact this reservation didn't get placed
+		}
+	}
+	// After trying to get or getting the destination, delete the reservation.
+	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
+	if err != nil {
+		// TODO, Should we return without placement?
+		return "", fmt.Errorf("Error deleting reservations destinations: %s", err)
+	}
 	//	glog.V(4).Infof("delete response of reservation %s is %s", reservationUUID, deleteResponse)
 	if getRevErr != nil {
 		return "", fmt.Errorf("Error getting reservations destinations: %s", err)
@@ -438,8 +450,9 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 	}
 }
 
+// Watches for pending tasks through layerx requests
+// Creates VMT reservation and placement request if pending tasks are found
 func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
-
 	for {
 		time.Sleep(time.Second * 20)
 		pending, err := action.RequestPendingTasks(client)
@@ -456,8 +469,12 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 					Meta: mesosmetadata,
 				}
 				name := pending[i].Name
-				taskDestinationMap[name] = newreservation.GetVMTReservation(pending[i])
-				// assign Tasks
+				taskDestinationMap[name], err = newreservation.GetVMTReservation(pending[i])
+				if err != nil {
+					fmt.Printf("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
+					continue
+				}
+				// assign Tasks if we got a placement
 				client.Action = "AssignTasks"
 				client.DestinationId = taskDestinationMap[name]
 				client.TaskId = pending[i].Id
