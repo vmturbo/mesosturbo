@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
+	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
+	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 )
 
-var TEMPLATE_CPU_TINY = float64(1.0)
+var TEMPLATE_CPU_TINY = float64(0.5)
 var TEMPLATE_MEM_TINY = float64(512.0)
 var TEMPLATE_CPU_MICRO = float64(1.0)
 var TEMPLATE_MEM_MICRO = float64(1024.0)
@@ -244,7 +245,8 @@ func GetRequestTaskSpec(task *action.PendingTask) map[string]string {
 	templateUUIDs := getTemplateSize(task)
 	requestMap := make(map[string]string)
 	// TODO this name is not supposed to be hardcoded , same for Kubeturbo
-	requestMap["reservation_name"] = "MesosReservationTest"
+	requestMap["reservation_name"] = "MesosReservation"
+	//TODO: this should not be hardcoded.
 	requestMap["num_instances"] = "1"
 	requestMap["template_name"] = templateUUIDs
 	requestMap["templateUuids[]"] = templateUUIDs
@@ -454,7 +456,7 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 // Creates VMT reservation and placement request if pending tasks are found
 func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
 	for {
-		time.Sleep(time.Second * 20)
+		time.Sleep(time.Second * 5)
 		pending, err := action.RequestPendingTasks(client)
 		if err != nil {
 			fmt.Printf("error %s \n", err)

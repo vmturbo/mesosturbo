@@ -2,6 +2,7 @@ package vmturbocommunicator
 
 import (
 	"fmt"
+
 	"github.com/golang/glog"
 	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
 	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
@@ -18,7 +19,6 @@ type VMTCommunicator struct {
 }
 
 func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.VMTMeta) *VMTCommunicator {
-	fmt.Println("-----> created VMTComm in NewVMT")
 	return &VMTCommunicator{
 		tmpClient: client,
 		meta:      vmtMetadata,
@@ -40,7 +40,7 @@ func (vmtcomm *VMTCommunicator) Init() {
 	}
 	vmtcomm.wsComm = wsCommunicator
 
-	// First create the message handler for kubernetes
+	// First create the message handler for mesos
 	mesosMsgHandler := &MesosServerMessageHandler{
 		//	mesosClient: vmtcomm.tmpClient,
 		meta:   vmtcomm.meta,
@@ -51,16 +51,16 @@ func (vmtcomm *VMTCommunicator) Init() {
 	return
 }
 
-// Register Kubernetes target onto server and start listen to websocket.
+// Register Mesos target onto server and start listen to websocket.
 func (vmtcomm *VMTCommunicator) RegisterMesos() {
-	// 1. Construct the account definition for kubernetes.
+	// 1. Construct the account definition for Mesos.
 	acctDefProps := createAccountDefMesos()
 
 	// 2. Build supply chain.
 	templateDtos := createSupplyChain()
-	glog.V(3).Infof("Supply chain for Kubernetes is created.")
+	glog.V(3).Infof("Supply chain for Mesos is created.")
 
-	// 3. construct the mesos ,  kubernetesProbe is the only probe supported.
+	// 3. construct the mesos ,  mesosProbe is the only probe supported.
 	probeType := "Mesos" //vmtcomm.meta.TargetType
 	probeCat := "Container"
 	mesosProbe := comm.NewProbeInfoBuilder(probeType, probeCat, templateDtos, acctDefProps).Create()
@@ -78,7 +78,7 @@ func (vmtcomm *VMTCommunicator) RegisterMesos() {
 }
 
 // TODO, rephrase comment.
-// create account definition for kubernetes, which is used later to create Kubernetes probe.
+// create account definition for mesos, which is used later to create mesos probe.
 // The return type is a list of ProbeInfo_AccountDefProp.
 // For a valid definition, targetNameIdentifier, username and password should be contained.
 func createAccountDefMesos() []*comm.AccountDefEntry {
@@ -102,7 +102,7 @@ func createAccountDefMesos() []*comm.AccountDefEntry {
 	return acctDefProps
 }
 
-// also include kubernetes supply chain explanation
+// also include mesos supply chain explanation
 // check if task becomes vApp or App
 func createSupplyChain() []*sdk.TemplateDTO {
 	glog.V(3).Infof(".......... Now use builder to create a supply chain ..........")
@@ -177,21 +177,6 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		CommodityType: &appCommType,
 	}
 	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_HOSTING).Buys(*appVCpu).Buys(*appVMem).Buys(*appAppComm)
-	/*
-		// Application supplychain builder
-		vAppSupplyChainNodeBuilder := sdk.NewSupplyChainNodeBuilder()
-		vAppSupplyChainNodeBuilder = vAppSupplyChainNodeBuilder.
-			Entity(sdk.EntityDTO_VIRTUAL_APPLICATION)
-
-		transactionType := sdk.CommodityDTO_TRANSACTION
-
-		// Buys CpuAllocation/MemAllocation from Pod
-		transactionTemplateComm := &sdk.TemplateCommodity{
-			Key:           &fakeKey,
-			CommodityType: &transactionType,
-		}
-		vAppSupplyChainNodeBuilder = vAppSupplyChainNodeBuilder.Provider(sdk.EntityDTO_APPLICATION, sdk.Provider_LAYERED_OVER).Buys(*transactionTemplateComm)
-	*/
 
 	// Link from Pod to VM
 	vmContainerExtLinkBuilder := sdk.NewExternalEntityLinkBuilder()
@@ -250,10 +235,10 @@ func (vmtcomm *VMTCommunicator) DiscoverTarget() {
 	vmtUrl := vmtcomm.wsComm.VmtServerAddress
 
 	extCongfix := make(map[string]string)
-	extCongfix["Username"] = "administrator"
-	extCongfix["Password"] = "a"
+	extCongfix["Username"] = vmtcomm.meta.OpsManagerUsername
+	extCongfix["Password"] = vmtcomm.meta.OpsManagerPassword
 	vmturboApi := vmtapi.NewVmtApi(vmtUrl, extCongfix)
 
-	// Discover Kubernetes target.
+	// Discover mesos target.
 	vmturboApi.DiscoverTarget(vmtcomm.meta.NameOrAddress)
 }

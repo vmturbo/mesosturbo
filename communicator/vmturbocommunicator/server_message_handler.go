@@ -3,6 +3,10 @@ package vmturbocommunicator
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	"github.com/golang/glog"
 	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/probe"
@@ -11,9 +15,6 @@ import (
 	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
-	"io/ioutil"
-	"net/http"
-	"time"
 )
 
 // impletements sdk.ServerMessageHandler
@@ -89,7 +90,6 @@ func (handler *MesosServerMessageHandler) keepDiscoverAlive(messageID int32) {
 func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.MediationServerMessage) {
 	//Discover the Mesos topology
 	glog.V(3).Infof("Discover topology request from server.")
-	fmt.Println("=======================> In discover topology! ")
 	// 1. Get message ID
 	messageID := serverMsg.GetMessageID()
 	var stopCh chan struct{} = make(chan struct{})
@@ -116,19 +116,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 		glog.Errorf("Error parsing pods: %s. Will return.", err)
 		return
 	}
-	/*	appEntityDtos, err := kubeProbe.ParseApplication(api.NamespaceAll)
-		if err != nil {
-			glog.Errorf("Error parsing applications: %s. Will return.", err)
-			return
-		}
 
-		serviceEntityDtos, err := kubeProbe.ParseService(api.NamespaceAll, labels.Everything())
-		if err != nil {
-			// TODO, should here still send out msg to server? Or set errorDTO?
-			glog.Errorf("Error parsing services: %s. Will return.", err)
-			return
-		}
-	*/
 	entityDtos := nodeEntityDtos
 	entityDtos = append(entityDtos, containerEntityDtos...)
 	//	entityDtos = append(entityDtos, appEntityDtos...)
@@ -139,7 +127,6 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	// 3. Build Client message
 	clientMsg := comm.NewClientMessageBuilder(messageID).SetDiscoveryResponse(discoveryResponse).Create()
-	fmt.Println("----------->about to call sdk send %+v \n", clientMsg)
 	curtime := time.Now()
 	handler.lastDiscoveryTime = &curtime
 	handler.wsComm.SendClientMessage(clientMsg)
@@ -186,11 +173,11 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 			}
 		} else {
 			// TODO
-			return nil, fmt.Errorf("Missing data for move")
+			return nil, fmt.Errorf("Unsupported entity destination type for moving")
 		}
-		return nil, fmt.Errorf("Missing data for move")
+		return nil, fmt.Errorf("Unsupported entity source type for moving")
 	} // else if provision TODO
-	return nil, fmt.Errorf("Missing data for move")
+	return nil, fmt.Errorf("Unsupported action type")
 }
 
 /*
@@ -230,7 +217,6 @@ func CreateSlaveIpIdMap(resp *http.Response) (map[string]string, error) {
 */
 // Receives an action request from server and call ActionExecutor to execute action.
 func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.MediationServerMessage) {
-	fmt.Println("--------> handleAction called")
 	//	messageID := serverMsg.GetMessageID()
 	actionRequest := serverMsg.GetActionRequest()
 	actionItemDTO := actionRequest.GetActionItemDTO()
@@ -249,7 +235,6 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	fmt.Println("Get Succeed in server handler line 248: %v", respMap)
 	defer resp.Body.Close()
 
 	simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
@@ -346,7 +331,6 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	var mapTaskUse map[string]*util.CalculatedUse
 	mapTaskUse = make(map[string]*util.CalculatedUse)
 	for i := range respContent.Slaves {
-		fmt.Println("=============> next slave")
 		s := respContent.Slaves[i]
 		fullUrl := "http://" + util.GetSlaveIP(s) + ":5051" + "/monitor/statistics.json"
 		req, err := http.NewRequest("GET", fullUrl, nil)
@@ -367,7 +351,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		var usedRes = new([]util.Executor)
 		err = json.Unmarshal(byteContent, &usedRes)
 		if err != nil {
-			fmt.Printf("JSON erroriiiiiiii %s", err)
+			fmt.Printf("JSON error %s", err)
 		}
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
@@ -435,106 +419,6 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 			}
 		} // task loop
 	} // slave loop
-	/*
-		arrM := respContent.TaskMasterAPI.Tasks
-		for j := range arrM {
-			if arrM[j].State != "TASK_RUNNING" {
-				continue
-			} else {
-				for i := range respContent.Slaves {
-					fmt.Println("=============> next slave")
-					s := respContent.Slaves[i]
-					fullUrl := "http://" + getSlaveIP(s) + ":5051" + "/monitor/statistics.json"
-					req, err := http.NewRequest("GET", fullUrl, nil)
-					req.Close = true
-					client := &http.Client{}
-					resp, err := client.Do(req)
-					if err != nil {
-						fmt.Println("Error getting response: %s", err)
-						return nil, err
-					}
-					defer resp.Body.Close()
-					stringResp, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						fmt.Printf("error %s", err)
-					}
-					//	fmt.Println("response is %+v", string(stringResp))
-					byteContent := []byte(stringResp)
-					var usedRes = new([]util.Executor)
-					err = json.Unmarshal(byteContent, &usedRes)
-					if err != nil {
-						fmt.Printf("JSON erroriiiiiiii %s", err)
-					}
-					var res *util.Resources
-					var arrOfExec []util.Executor
-					arrOfExec = *usedRes
-					for i := range arrOfExec {
-						e := arrOfExec[i]
-						if e.Id == arrM[j].Id {
-							res = &util.Resources{
-								Disk: float64(0),
-								Mem:  e.Statistics.MemLimitBytes / float64(1024.00),
-								CPUs: e.Statistics.CPUsLimit,
-							}
-							taskId := arrM[j].Id
-							mapTaskRes[taskId] = *res
-							break
-						}
-					}
-					// SLAVE MONITOR
-					if _, ok := mapSlaveUse[s.Id]; !ok {
-						i := 0 // TODO sunday
-						executor := arrOfExec[i]
-						//if first time ??
-						var prevSecs float64
-						fmt.Println("          CALCULATION START :::")
-						fmt.Printf("executor.Statistics.CPUsystemTimeSecs : %f \n", executor.Statistics.CPUsystemTimeSecs)
-						fmt.Printf("executor.Statistics.CPUuserTimeSecs :%f \n", executor.Statistics.CPUuserTimeSecs)
-
-						curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
-						if handler.lastDiscoveryTime == nil {
-							fmt.Println("last time from handler is nil")
-						}
-						if previousUseMap == nil { //CPUsumSystemUserSecs == float64(0) {
-							fmt.Println(" map was nil !!")
-							prevSecs = curSecs
-
-						} else {
-							if _, ok := previousUseMap[s.Id]; !ok {
-								fmt.Println("****** slave not found")
-								// TODO NEW SLAVES
-								continue
-							}
-							prevSecs = previousUseMap[s.Id].CPUsumSystemUserSecs
-							fmt.Printf("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
-						}
-						diffSecs := curSecs - prevSecs
-						fmt.Println(" t1 - t0 : %f \n", diffSecs)
-						var lastTime time.Time
-						if handler.lastDiscoveryTime == nil {
-							lastTime = time.Now()
-						} else {
-							lastTime = *handler.lastDiscoveryTime
-						}
-						diffTime := time.Since(lastTime)
-						fmt.Printf(" last time on record : %+v \n", lastTime)
-						diffT := diffTime.Seconds()
-						fmt.Printf("time since last discovery in sec : %f \n", diffT)
-						usedCPUfraction := diffSecs / diffT
-						// ratio * cores * 1000kHz
-						fmt.Printf("-------------> utilization CPU %f", usedCPUfraction)
-
-						usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
-						mapSlaveUse[s.Id] = &util.CalculatedUse{
-							CPUs:                 usedCPU,
-							CPUsumSystemUserSecs: curSecs,
-						}
-						fmt.Printf("-------------> used CPU %f", usedCPU)
-						s.Calculated.CPUs = usedCPU
-					}
-				}
-			}
-		}*/
 
 	// map task to resources
 	handler.taskUseMap = mapTaskUse
@@ -600,7 +484,6 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 		commoditiesBoughtApp := taskProbe.GetCommoditiesBoughtByApp(taskProbe.Task, taskResource)
 
 		entityDTO = buildTaskAppEntityDTO(m.SlaveIdIpMap, taskProbe.Task, commoditiesSoldApp, commoditiesBoughtApp)
-		fmt.Printf("============> appending task %s \n", taskProbe.Task.Name)
 		result = append(result, entityDTO)
 	}
 	fmt.Printf(" entity DTOs : %d", len(result))

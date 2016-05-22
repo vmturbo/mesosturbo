@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
 	"github.com/pamelasanchezvi/mesosturbo/communicator/vmturbocommunicator"
@@ -9,8 +10,6 @@ import (
 )
 
 func main() {
-	fmt.Println("in main now")
-
 	metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
 	if err != nil {
 		fmt.Printf("Error!! : %s\n", err)
