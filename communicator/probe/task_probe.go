@@ -87,8 +87,7 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 	//		cpuUsed = float64(10000)
 	//	}
 	if taskUseMap != nil {
-		fmt.Printf(" task used map is %+v and value is %+v \n", taskUseMap, taskUseMap[task.Id])
-
+		//	fmt.Printf(" task used map is %+v and value is %+v \n", taskUseMap, taskUseMap[task.Id])
 	} else {
 		fmt.Println("task map is nil")
 	}

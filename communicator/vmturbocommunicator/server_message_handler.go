@@ -89,7 +89,7 @@ func (handler *MesosServerMessageHandler) keepDiscoverAlive(messageID int32) {
 func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.MediationServerMessage) {
 	//Discover the Mesos topology
 	glog.V(3).Infof("Discover topology request from server.")
-
+	fmt.Println("=======================> In discover topology! ")
 	// 1. Get message ID
 	messageID := serverMsg.GetMessageID()
 	var stopCh chan struct{} = make(chan struct{})
@@ -330,7 +330,9 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	}
 	for j := range taskContent.Tasks {
 		t := taskContent.Tasks[j]
+		// MEM UNITS KB
 		t.Resources.Mem = t.Resources.Mem * float64(1024)
+		//	fmt.Printf("----> tasks from mesos: # %d, name : %s, state: %s\n", j, t.Name, t.State)
 	}
 	respContent.TaskMasterAPI = *taskContent
 	fmt.Printf("tasks response is %+v \n", resp.Body)
@@ -388,9 +390,9 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 			// TASK MONITOR
 			if _, ok := mapTaskUse[taskId]; !ok {
 				var prevSecs float64
-				fmt.Println("          CALCULATION START :::")
-				fmt.Printf("executor.Statistics.CPUsystemTimeSecs : %f \n", executor.Statistics.CPUsystemTimeSecs)
-				fmt.Printf("executor.Statistics.CPUuserTimeSecs :%f \n", executor.Statistics.CPUuserTimeSecs)
+				//	fmt.Println("          CALCULATION START :::")
+				//	fmt.Printf("executor.Statistics.CPUsystemTimeSecs : %f \n", executor.Statistics.CPUsystemTimeSecs)
+				//	fmt.Printf("executor.Statistics.CPUuserTimeSecs :%f \n", executor.Statistics.CPUuserTimeSecs)
 
 				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
 				if handler.lastDiscoveryTime == nil {
@@ -414,19 +416,19 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 					lastTime = *handler.lastDiscoveryTime
 				}
 				diffTime := time.Since(lastTime)
-				fmt.Printf(" last time on record : %+v \n", lastTime)
+				//	fmt.Printf(" last time on record : %+v \n", lastTime)
 				diffT := diffTime.Seconds()
-				fmt.Printf("time since last discovery in sec : %f \n", diffT)
+				//	fmt.Printf("time since last discovery in sec : %f \n", diffT)
 				usedCPUfraction := diffSecs / diffT
 				// ratio * cores * 1000kHz
-				fmt.Printf("-------------> utilization CPU %f", usedCPUfraction)
+				//	fmt.Printf("-------------> utilization CPU %f", usedCPUfraction)
 
 				usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
 				mapTaskUse[taskId] = &util.CalculatedUse{
 					CPUs:                 usedCPU,
 					CPUsumSystemUserSecs: curSecs,
 				}
-				fmt.Printf("-------------> used CPU %f", usedCPU)
+				//	fmt.Printf("-------------> used CPU %f", usedCPU)
 				// TODO for slave sum
 				//		s.Calculated.CPUs = usedCPU
 				mapSlaveUse[s.Id].CPUs = usedCPU + mapSlaveUse[s.Id].CPUs
@@ -575,9 +577,12 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 		taskProbe := &probe.TaskProbe{
 			Task: &taskList[i],
 		}
-		if taskProbe.Task.State == "TASK_KILLED" {
+		if taskProbe.Task.State != "TASK_RUNNING" {
+			fmt.Printf("=====> not running task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
 			continue
 		}
+		fmt.Printf("=====> task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
+
 		//ipAddress := slaveIdIpMap[taskProbe.Task.SlaveId]
 		//usedResources := taskProbe.GetUsedResourcesForTask(ipAddress)
 		taskResource, err := taskProbe.GetTaskResourceStat(m.MapTaskStatistics, taskProbe.Task, taskUseMap)
@@ -595,7 +600,7 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 		commoditiesBoughtApp := taskProbe.GetCommoditiesBoughtByApp(taskProbe.Task, taskResource)
 
 		entityDTO = buildTaskAppEntityDTO(m.SlaveIdIpMap, taskProbe.Task, commoditiesSoldApp, commoditiesBoughtApp)
-
+		fmt.Printf("============> appending task %s \n", taskProbe.Task.Name)
 		result = append(result, entityDTO)
 	}
 	fmt.Printf(" entity DTOs : %d", len(result))
@@ -643,7 +648,7 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 		return nil, err
 	}
 
-	fmt.Println(" response was: %s", string(content))
+	//	fmt.Println(" response was: %s", string(content))
 
 	glog.V(4).Infof("response content is %s", string(content))
 	byteContent := []byte(content)
