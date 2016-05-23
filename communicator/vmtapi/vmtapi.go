@@ -25,11 +25,11 @@ var TEMPLATE_CPU_MEDIUM = float64(2.0)
 var TEMPLATE_MEM_MEDIUM = float64(4096.0)
 var TEMPLATE_CPU_LARGE = float64(2.0)
 var TEMPLATE_MEM_LARGE = float64(8192.0)
-var TEMPLATE_TINY_UUID = "DC5_1CxZMJkghjCaJOYu5"
-var TEMPLATE_MICRO_UUID = "DC5_1CxZMJfgejCaJOYu5"
-var TEMPLATE_SMALL_UUID = "DC5_1CxZMJkbfjCaJOYu5"
-var TEMPLATE_MEDIUM_UUID = "DC5_1CxgeJkEEeCaJOYu5"
-var TEMPLATE_LARGE_UUID = "DC5_1CxZMJkEEeCaJOYu5"
+var TEMPLATE_TINY_UUID = "DC6_1CxZMJkghjCaJOYu5"
+var TEMPLATE_MICRO_UUID = "DC6_1CxZMJfgejCaJOYu5"
+var TEMPLATE_SMALL_UUID = "DC6_1CxZMJkbfjCaJOYu5"
+var TEMPLATE_MEDIUM_UUID = "DC6_1CxgeJkEEeCaJOYu5"
+var TEMPLATE_LARGE_UUID = "DC6_1CxZMJkEEeCaJOYu5"
 
 // api information for requests to VMT server
 type VmtApi struct {
@@ -332,11 +332,13 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 		time.Sleep(2 * time.Second)
 		fmt.Printf("reserve UUID  %s", reservationUUID)
 		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
-		if getRevErr == nil {
+		dest, err := GetTaskReservationDestination(getResponse)
+		if err != nil {
+			fmt.Errorf("Error getting reservations destinations: %s \n", err)
+		}
+		if dest != "" {
 			fmt.Printf("Got a reservation destination! \n")
 			break
-		} else {
-			// handle the fact this reservation didn't get placed
 		}
 	}
 	// After trying to get or getting the destination, delete the reservation.

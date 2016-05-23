@@ -163,12 +163,10 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	// Buys VCpu and VMem from VM
 	vCpuType := sdk.CommodityDTO_VCPU
 	appVCpu := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
 		CommodityType: &vCpuType,
 	}
 	vMemType := sdk.CommodityDTO_VMEM
 	appVMem := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
 		CommodityType: &vMemType,
 	}
 	appCommType := sdk.CommodityDTO_APPLICATION
