@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/vmturbocommunicator"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	"github.com/vmturbo/mesosturbo/communicator/metadata"
+	"github.com/vmturbo/mesosturbo/communicator/vmtapi"
+	"github.com/vmturbo/mesosturbo/communicator/vmturbocommunicator"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
 func main() {

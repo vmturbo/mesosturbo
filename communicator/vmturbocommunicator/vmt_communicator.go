@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
+	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
+	vmtapi "github.com/vmturbo/mesosturbo/communicator/vmtapi"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )

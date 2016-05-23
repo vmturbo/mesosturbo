@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	"github.com/vmturbo/mesosturbo/communicator/metadata"
+	"github.com/vmturbo/mesosturbo/communicator/util"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
 var TEMPLATE_CPU_TINY = float64(0.5)

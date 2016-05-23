@@ -1,7 +1,7 @@
 package builder
 
 import (
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
 type SimulatorBuilder struct {

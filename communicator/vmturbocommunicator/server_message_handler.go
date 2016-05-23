@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/probe"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
-	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
+	"github.com/vmturbo/mesosturbo/communicator/probe"
+	"github.com/vmturbo/mesosturbo/communicator/util"
+	vmtapi "github.com/vmturbo/mesosturbo/communicator/vmtapi"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )

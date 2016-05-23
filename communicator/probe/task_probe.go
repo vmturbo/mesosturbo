@@ -3,7 +3,7 @@ package probe
 import (
 	"fmt"
 
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
+	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )
 

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/pamelasanchezvi/mesosturbo/cmd/simulation/builder"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	api "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	"github.com/vmturbo/mesosturbo/cmd/simulation/builder"
+	"github.com/vmturbo/mesosturbo/communicator/metadata"
+	api "github.com/vmturbo/mesosturbo/communicator/vmtapi"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
 func main() {
