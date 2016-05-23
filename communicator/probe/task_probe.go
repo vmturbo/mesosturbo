@@ -175,13 +175,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
 	vCpuCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(task.SlaveId).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vCpuCommBought)
 
 	vMemCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(task.SlaveId).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vMemCommBought)
