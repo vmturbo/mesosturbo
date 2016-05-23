@@ -86,13 +86,13 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 
 	//TODO: create const value for keys
 	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Capacity(float64(nodeResourceStat.memAllocationCapacity)).
 		Used(nodeResourceStat.memAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, memAllocationComm)
 	cpuAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Capacity(float64(nodeResourceStat.cpuAllocationCapacity)).
 		Used(nodeResourceStat.cpuAllocationUsed).
 		Create()

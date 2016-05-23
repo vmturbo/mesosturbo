@@ -125,12 +125,12 @@ func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskR
 func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
 	var commoditiesBought []*sdk.CommodityDTO
 	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
 	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
