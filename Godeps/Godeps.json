@@ -1,0 +1,30 @@
+{
+	"ImportPath": "github.com/vmturbo/mesosturbo",
+	"GoVersion": "go1.4",
+	"GodepVersion": "v62",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "b982704f8bb716bb608144408cff30e15fbde841"
+		},
+		{
+			"ImportPath": "github.com/vmturbo/vmturbo-go-sdk/communicator",
+			"Rev": "48be989e457dc606ddfbb322acf53824d9c644da"
+		},
+		{
+			"ImportPath": "github.com/vmturbo/vmturbo-go-sdk/sdk",
+			"Rev": "48be989e457dc606ddfbb322acf53824d9c644da"
+		},
+		{
+			"ImportPath": "golang.org/x/net/websocket",
+			"Rev": "c2528b2dd8352441850638a8bb678c2ad056fd3e"
+		}
+	]
+}
