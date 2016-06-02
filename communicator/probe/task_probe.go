@@ -77,7 +77,7 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 	// The metrics we care about now are Cpu and Mem.
 	//requests := task.Resources.Limits
 	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
-	cpuCapacity := task.Resources.CPUs * float64(1000.00)
+	cpuCapacity := task.Resources.CPUs * float64(2000.00)
 
 	fmt.Println("Discovered task is " + task.Id)
 	fmt.Printf("Container capacity is %f \n", cpuCapacity)

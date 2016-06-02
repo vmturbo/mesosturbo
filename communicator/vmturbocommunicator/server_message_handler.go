@@ -21,6 +21,7 @@ import (
 type MesosServerMessageHandler struct {
 	meta              *vmtmeta.VMTMeta
 	wsComm            *comm.WebSocketCommunicator
+	vmtComm           *VMTCommunicator
 	lastDiscoveryTime *time.Time
 	slaveUseMap       map[string]*util.CalculatedUse
 	taskUseMap        map[string]*util.CalculatedUse
@@ -245,6 +246,8 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	if err != nil {
 		fmt.Printf("error %s \n", err)
 	}
+	// response
+	handler.vmtComm.SendActionResponse(sdk.ActionResponseState_SUCCEEDED, int32(100), serverMsg.GetMessageID(), "Success")
 
 	/*
 		err := actionExecutor.ExcuteAction(actionItemDTO, messageID)

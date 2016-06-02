@@ -43,8 +43,9 @@ func (vmtcomm *VMTCommunicator) Init() {
 	// First create the message handler for mesos
 	mesosMsgHandler := &MesosServerMessageHandler{
 		//	mesosClient: vmtcomm.tmpClient,
-		meta:   vmtcomm.meta,
-		wsComm: wsCommunicator,
+		meta:    vmtcomm.meta,
+		wsComm:  wsCommunicator,
+		vmtComm: vmtcomm,
 		//	etcdStorage: vmtcomm.etcdStorage,
 	}
 	wsCommunicator.ServerMsgHandler = mesosMsgHandler
@@ -209,7 +210,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 }
 
 // Send action response to vmt server.
-func (vmtcomm *VMTCommunicator) SendActionReponse(state sdk.ActionResponseState, progress, messageID int32, description string) {
+func (vmtcomm *VMTCommunicator) SendActionResponse(state sdk.ActionResponseState, progress, messageID int32, description string) {
 	// 1. build response
 	response := &comm.ActionResponse{
 		ActionResponseState: &state,
