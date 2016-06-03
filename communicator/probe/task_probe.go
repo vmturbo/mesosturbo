@@ -3,7 +3,7 @@ package probe
 import (
 	"fmt"
 
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
+	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )
 
@@ -77,7 +77,7 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 	// The metrics we care about now are Cpu and Mem.
 	//requests := task.Resources.Limits
 	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
-	cpuCapacity := task.Resources.CPUs * float64(1000.00)
+	cpuCapacity := task.Resources.CPUs * float64(2000.00)
 
 	fmt.Println("Discovered task is " + task.Id)
 	fmt.Printf("Container capacity is %f \n", cpuCapacity)
@@ -125,12 +125,12 @@ func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskR
 func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
 	var commoditiesBought []*sdk.CommodityDTO
 	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
 	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
-		Key("Container").
+		Key("Mesos").
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
@@ -175,13 +175,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
 	vCpuCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(task.SlaveId).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vCpuCommBought)
 
 	vMemCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(task.SlaveId).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vMemCommBought)

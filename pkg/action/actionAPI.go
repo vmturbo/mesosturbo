@@ -37,11 +37,13 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 	defer resp.Body.Close()
 	fmt.Printf("----> request is : %+v\n", req)
 	fmt.Printf("response status %s Headers: %s \n", resp.Header, resp.Status)
-	if !strings.Contains(resp.Header.Get("Status"), "202 Accepted") {
+	if !strings.Contains(resp.Status, "202 Accepted") {
 		fmt.Println("Error while migrating tasks \n")
 	}
+
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
+
 	return string(body), nil
 }
 

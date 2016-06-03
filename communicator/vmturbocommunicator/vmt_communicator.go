@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
+	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
+	vmtapi "github.com/vmturbo/mesosturbo/communicator/vmtapi"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )
@@ -43,8 +43,9 @@ func (vmtcomm *VMTCommunicator) Init() {
 	// First create the message handler for mesos
 	mesosMsgHandler := &MesosServerMessageHandler{
 		//	mesosClient: vmtcomm.tmpClient,
-		meta:   vmtcomm.meta,
-		wsComm: wsCommunicator,
+		meta:    vmtcomm.meta,
+		wsComm:  wsCommunicator,
+		vmtComm: vmtcomm,
 		//	etcdStorage: vmtcomm.etcdStorage,
 	}
 	wsCommunicator.ServerMsgHandler = mesosMsgHandler
@@ -163,12 +164,10 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	// Buys VCpu and VMem from VM
 	vCpuType := sdk.CommodityDTO_VCPU
 	appVCpu := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
 		CommodityType: &vCpuType,
 	}
 	vMemType := sdk.CommodityDTO_VMEM
 	appVMem := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
 		CommodityType: &vMemType,
 	}
 	appCommType := sdk.CommodityDTO_APPLICATION
@@ -211,7 +210,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 }
 
 // Send action response to vmt server.
-func (vmtcomm *VMTCommunicator) SendActionReponse(state sdk.ActionResponseState, progress, messageID int32, description string) {
+func (vmtcomm *VMTCommunicator) SendActionResponse(state sdk.ActionResponseState, progress, messageID int32, description string) {
 	// 1. build response
 	response := &comm.ActionResponse{
 		ActionResponseState: &state,

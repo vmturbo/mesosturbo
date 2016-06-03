@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	vmtmeta "github.com/pamelasanchezvi/mesosturbo/communicator/metadata"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/probe"
-	"github.com/pamelasanchezvi/mesosturbo/communicator/util"
-	vmtapi "github.com/pamelasanchezvi/mesosturbo/communicator/vmtapi"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
+	"github.com/vmturbo/mesosturbo/communicator/probe"
+	"github.com/vmturbo/mesosturbo/communicator/util"
+	vmtapi "github.com/vmturbo/mesosturbo/communicator/vmtapi"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )
@@ -21,6 +21,7 @@ import (
 type MesosServerMessageHandler struct {
 	meta              *vmtmeta.VMTMeta
 	wsComm            *comm.WebSocketCommunicator
+	vmtComm           *VMTCommunicator
 	lastDiscoveryTime *time.Time
 	slaveUseMap       map[string]*util.CalculatedUse
 	taskUseMap        map[string]*util.CalculatedUse
@@ -245,6 +246,8 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	if err != nil {
 		fmt.Printf("error %s \n", err)
 	}
+	// response
+	handler.vmtComm.SendActionResponse(sdk.ActionResponseState_SUCCEEDED, int32(100), serverMsg.GetMessageID(), "Success")
 
 	/*
 		err := actionExecutor.ExcuteAction(actionItemDTO, messageID)

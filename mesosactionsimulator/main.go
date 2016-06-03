@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/pamelasanchezvi/mesosturbo/cmd/simulation/builder"
-	"github.com/pamelasanchezvi/mesosturbo/pkg/action"
+	"github.com/vmturbo/mesosturbo/cmd/simulation/builder"
+	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
 func main() {
