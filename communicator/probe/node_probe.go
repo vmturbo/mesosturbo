@@ -1,8 +1,7 @@
 package probe
 
 import (
-	"fmt"
-
+	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
 )
@@ -47,20 +46,15 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave, useMap ma
 	// Get the node Cpu and Mem capacity.
 	nodeCpuCapacity := slaveInfo.Resources.CPUs * float64(2000) //float64(slaveInfo.Resources.CPUs) * float64(cpuFrequency)
 	nodeMemCapacity := slaveInfo.Resources.Mem                  //float64(slaveInfo.Resources.Mem) / 1024 // Mem is returned in B
-	fmt.Println("Discovered node is " + slaveInfo.Id)
-	fmt.Printf("Node CPU capacity is %f \n", nodeCpuCapacity)
-	fmt.Printf("Node Mem capacity is %f \n", nodeMemCapacity)
+	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
+	glog.V(4).Infof("Node CPU capacity is %f \n", nodeCpuCapacity)
+	glog.V(4).Infof("Node Mem capacity is %f \n", nodeMemCapacity)
 	// Find out the used value for each commodity
 	cpuUsed := useMap[slaveInfo.Id].CPUs   //float64(rootCurCpu) * float64(cpuFrequency)
 	memUsed := slaveInfo.UsedResources.Mem //float64(rootCurMem)
-	fmt.Println("Discovered node is " + slaveInfo.Id)
-	fmt.Printf("=======> Node CPU used is %f \n", cpuUsed)
-	fmt.Printf("Node Mem used is %f \n", memUsed)
-
-	// this flag is defined at package level, in probe.go
-	//	if localTestingFlag {
-	//		cpuUsed = float64(10000)
-	//	}
+	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
+	glog.V(4).Infof("=======> Node CPU used is %f \n", cpuUsed)
+	glog.V(4).Infof("Node Mem used is %f \n", memUsed)
 
 	return &NodeResourceStat{
 		cpuAllocationCapacity: nodeCpuCapacity,
@@ -98,11 +92,13 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
 	vMemComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
+		Key(slaveInfo.Id).
 		Capacity(nodeResourceStat.vMemCapacity).
 		Used(nodeResourceStat.vMemUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vMemComm)
 	vCpuComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
+		Key(slaveInfo.Id).
 		Capacity(float64(nodeResourceStat.vCpuCapacity)).
 		Used(nodeResourceStat.vCpuUsed).
 		Create()

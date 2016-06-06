@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/cmd/simulation/builder"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
 	api "github.com/vmturbo/mesosturbo/communicator/vmtapi"
@@ -14,18 +15,18 @@ func main() {
 	// TODO init with flags
 	simulator, err := simbuilder.Build()
 	if err != nil {
-		fmt.Printf("error %s \n", err)
+		glog.Errorf("error %s \n", err)
 	}
 	//	actor := action.RequestMesosAction(simulator.MesosClient())
 	pending, err := action.RequestPendingTasks(simulator)
 	if err != nil {
-		fmt.Printf("error %s \n", err)
+		glog.Errorf("error %s \n", err)
 	}
 	metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
 	if err != nil {
-		fmt.Println("error from metadata")
+		glog.Errorf("error from metadata")
 	}
-	fmt.Printf("----> metadata is %+v", metadata)
+	glog.V(4).Infof("----> metadata is %+v", metadata)
 	var taskDestinationMap = make(map[string]string)
 	var newreservation *api.Reservation
 	for i := range pending {
@@ -45,8 +46,8 @@ func main() {
 		}
 		res, err := action.RequestMesosAction(&client)
 		if err != nil {
-			fmt.Printf("error %s \n", err)
+			glog.Errorf("error %s \n", err)
 		}
-		fmt.Printf("result is : %s \n", res)
+		glog.V(4).Infof("result is : %s \n", res)
 	}
 }
