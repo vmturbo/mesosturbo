@@ -103,8 +103,6 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 		glog.Errorf("Error getting state from master : %s", err)
 		return
 	}
-	res := mesosProbe.Slaves[0].Resources
-	fmt.Printf("at Discover topology: disk %f, mem %f , cpu %f  \n", res.Disk, res.Mem, res.CPUs)
 	nodeEntityDtos, err := ParseNode(mesosProbe, handler.slaveUseMap)
 	if err != nil {
 		// TODO, should here still send out msg to server?
@@ -120,7 +118,6 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	entityDtos := nodeEntityDtos
 	entityDtos = append(entityDtos, containerEntityDtos...)
-	//	entityDtos = append(entityDtos, appEntityDtos...)
 	//	entityDtos = append(entityDtos, serviceEntityDtos...)
 	discoveryResponse := &comm.DiscoveryResponse{
 		EntityDTO: entityDtos,
@@ -130,6 +127,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	clientMsg := comm.NewClientMessageBuilder(messageID).SetDiscoveryResponse(discoveryResponse).Create()
 	curtime := time.Now()
 	handler.lastDiscoveryTime = &curtime
+	glog.V(3).Infof(" Discovery msg : %+v", clientMsg)
 	handler.wsComm.SendClientMessage(clientMsg)
 }
 
@@ -163,7 +161,7 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 						break
 					}
 				}
-				fmt.Println(" destination IP is %s and task is  %s \n", slaveId, containerId)
+				glog.V(3).Infof(" destination IP is %s and task is  %s \n", slaveId, containerId)
 				return &action.MesosClient{
 					MesosMasterIP:   handler.meta.MesosActionIP,
 					MesosMasterPort: handler.meta.MesosActionPort,
@@ -174,10 +172,13 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 			}
 		} else {
 			// TODO
+			glog.Errorf("Unsupported entity destination type for moving")
 			return nil, fmt.Errorf("Unsupported entity destination type for moving")
 		}
+		glog.Errorf("Unsupported entity source type for moving")
 		return nil, fmt.Errorf("Unsupported entity source type for moving")
 	} // else if provision TODO
+	glog.Errorf("Unsupporter action type")
 	return nil, fmt.Errorf("Unsupported action type")
 }
 
@@ -224,9 +225,9 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
 
 	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
-	fmt.Println("The full Url is ", fullUrl)
+	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
-	fmt.Println(req)
+	glog.V(4).Infof("%+v", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -240,11 +241,11 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 
 	simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
 	if err != nil {
-		fmt.Printf("error %s \n", err)
+		glog.Errorf("error %s \n", err)
 	}
 	_, err = action.RequestMesosAction(simulator)
 	if err != nil {
-		fmt.Printf("error %s \n", err)
+		glog.Errorf("error %s \n", err)
 	}
 	// response
 	handler.vmtComm.SendActionResponse(sdk.ActionResponseState_SUCCEEDED, int32(100), serverMsg.GetMessageID(), "Success")
@@ -259,10 +260,10 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 
 func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {
 	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
-	fmt.Println("The full Url is ", fullUrl)
+	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
-	fmt.Println(req)
+	glog.V(4).Infof("%+v", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -291,7 +292,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	fmt.Println("The tasks full Url is ", fullUrl)
 	req, err = http.NewRequest("GET", fullUrl, nil)
 
-	fmt.Println(req)
+	glog.V(4).Infof("%+v", req)
 	client = &http.Client{}
 	resp, err = client.Do(req)
 	if err != nil {
@@ -341,20 +342,19 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println("Error getting response: %s", err)
+			glog.V(4).Infof("Error getting response: %s", err)
 			return nil, err
 		}
 		defer resp.Body.Close()
 		stringResp, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("error %s", err)
+			glog.V(4).Infof("error %s", err)
 		}
-		//	fmt.Println("response is %+v", string(stringResp))
 		byteContent := []byte(stringResp)
 		var usedRes = new([]util.Executor)
 		err = json.Unmarshal(byteContent, &usedRes)
 		if err != nil {
-			fmt.Printf("JSON error %s", err)
+			glog.V(4).Infof("JSON error %s", err)
 		}
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
@@ -383,19 +383,19 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
 				if handler.lastDiscoveryTime == nil {
-					fmt.Println("last time from handler is nil")
+					glog.V(4).Infof("last time from handler is nil")
 				}
 				_, ok := previousUseMap[taskId]
 				if previousUseMap == nil || !ok {
-					fmt.Println(" map was nil !!")
+					glog.V(4).Infof(" map was nil !!")
 					prevSecs = curSecs
 
 				} else {
 					prevSecs = previousUseMap[taskId].CPUsumSystemUserSecs
-					fmt.Printf("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
+					glog.V(4).Infof("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
 				}
 				diffSecs := curSecs - prevSecs
-				fmt.Println(" t1 - t0 : %f \n", diffSecs)
+				glog.V(4).Infof(" t1 - t0 : %f \n", diffSecs)
 				var lastTime time.Time
 				if handler.lastDiscoveryTime == nil {
 					lastTime = time.Now()
@@ -432,7 +432,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 }
 
 func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.CalculatedUse) ([]*sdk.EntityDTO, error) {
-	fmt.Printf("in ParseNode")
+	glog.V(4).Infof("in ParseNode\n")
 	result := []*sdk.EntityDTO{}
 	for i := range m.Slaves {
 		s := m.Slaves[i]
@@ -442,7 +442,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		}
 		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s, slaveUseMap)
 		if err != nil {
-			fmt.Printf("error is : %s", err)
+			glog.Errorf("error is : %s\n", err)
 			return result, err
 		}
 		slaveIP := util.GetSlaveIP(s)
@@ -450,7 +450,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name, commoditiesSold)
 		result = append(result, entityDTO)
 	}
-	fmt.Printf(" entity DTOs : %d", len(result))
+	glog.V(4).Infof(" entity DTOs : %d\n", len(result))
 	return result, nil
 }
 
@@ -465,16 +465,16 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 			Task: &taskList[i],
 		}
 		if taskProbe.Task.State != "TASK_RUNNING" {
-			fmt.Printf("=====> not running task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
+			glog.V(4).Infof("=====> not running task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
 			continue
 		}
-		fmt.Printf("=====> task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
+		glog.V(4).Infof("=====> task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
 
 		//ipAddress := slaveIdIpMap[taskProbe.Task.SlaveId]
 		//usedResources := taskProbe.GetUsedResourcesForTask(ipAddress)
 		taskResource, err := taskProbe.GetTaskResourceStat(m.MapTaskStatistics, taskProbe.Task, taskUseMap)
 		if err != nil {
-			fmt.Printf("error is : %s", err)
+			glog.Errorf("error is : %s", err)
 		}
 		commoditiesSoldContainer := taskProbe.GetCommoditiesSoldByContainer(taskProbe.Task, taskResource)
 		commoditiesBoughtContainer := taskProbe.GetCommoditiesBoughtByContainer(taskProbe.Task, taskResource)
@@ -489,12 +489,12 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 		entityDTO = buildTaskAppEntityDTO(m.SlaveIdIpMap, taskProbe.Task, commoditiesSoldApp, commoditiesBoughtApp)
 		result = append(result, entityDTO)
 	}
-	fmt.Printf(" entity DTOs : %d", len(result))
+	glog.V(4).Infof("Task entity DTOs : %d", len(result))
 	return result, nil
 }
 
 func parseAPITasksResponse(resp *http.Response) (*util.MasterTasks, error) {
-	fmt.Println("----> in parseAPICallResponse")
+	glog.V(4).Infof("----> in parseAPICallResponse")
 	if resp == nil {
 		return nil, fmt.Errorf("response sent in is nil")
 	}
@@ -502,11 +502,9 @@ func parseAPITasksResponse(resp *http.Response) (*util.MasterTasks, error) {
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Error after ioutil.ReadAll: %s", err)
+		glog.Errorf("Error after ioutil.ReadAll: %s", err)
 		return nil, err
 	}
-
-	fmt.Println(" response was: %s", string(content))
 
 	glog.V(4).Infof("response content is %s", string(content))
 
@@ -516,13 +514,13 @@ func parseAPITasksResponse(resp *http.Response) (*util.MasterTasks, error) {
 
 	//	fmt.Printf("the MesosAPIResponse disk %f , mem %f , cpus %f  \n", res.Disk, res.Mem, res.CPUs)
 	if err != nil {
-		fmt.Printf("error in json unmarshal : %s", err)
+		glog.Errorf("error in json unmarshal : %s", err)
 	}
 	return jsonTasks, nil
 }
 
 func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) {
-	fmt.Println("----> in parseAPICallResponse")
+	glog.V(4).Infof("----> in parseAPICallResponse")
 	if resp == nil {
 		return nil, fmt.Errorf("response sent in is nil")
 	}
@@ -530,7 +528,7 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Error after ioutil.ReadAll: %s", err)
+		glog.Errorf("Error after ioutil.ReadAll: %s", err)
 		return nil, err
 	}
 
@@ -543,7 +541,7 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 	res := jsonMesosMaster.Slaves[0].Resources
 	fmt.Printf("the MesosAPIResponse disk %f , mem %f , cpus %f  \n", res.Disk, res.Mem, res.CPUs)
 	if err != nil {
-		fmt.Printf("error in json unmarshal : %s", err)
+		glog.Errorf("error in json unmarshal : %s", err)
 	}
 	return jsonMesosMaster, nil
 }

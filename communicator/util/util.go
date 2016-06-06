@@ -20,6 +20,7 @@ func logPanic(r interface{}) {
 		if !ok {
 			break
 		}
+		glog.V(4).Infof("%v:%v\n", file, line)
 		callers = callers + fmt.Sprintf("%v:%v\n", file, line)
 	}
 	glog.Errorf("Recovered from panic: %#v (%v)\n%v", r, r, callers)

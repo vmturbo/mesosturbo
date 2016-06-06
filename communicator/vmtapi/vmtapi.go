@@ -3,16 +3,16 @@ package api
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/mesosturbo/pkg/action"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"time"
 )
 
 var TEMPLATE_CPU_TINY = float64(0.5)
@@ -122,7 +122,6 @@ func (vmtApi *VmtApi) Delete(getUrl string) (string, error) {
 func (vmtApi *VmtApi) apiPost(postUrl, requestDataString string) (string, error) {
 	fullUrl := "http://" + vmtApi.vmtUrl + "/vmturbo/api" + postUrl + requestDataString
 	glog.V(4).Info("The full Url is ", fullUrl)
-	fmt.Printf("The full Url is ", fullUrl)
 	req, err := http.NewRequest("POST", fullUrl, nil)
 
 	req.SetBasicAuth(vmtApi.extConfig["Username"], vmtApi.extConfig["Password"])
@@ -196,7 +195,8 @@ func (vmtApi *VmtApi) apiDelete(getUrl string) (string, error) {
 // this method takes in a reservation response and should return the reservation uuid, if there is any
 func parseAPICallResponse(resp *http.Response) (string, error) {
 	if resp == nil {
-		return "", fmt.Errorf("response sent in is nil")
+		glog.V(4).Infof("response from VMTServer for Reservation UUID is nil")
+		return "", errors.New("response sent in is nil")
 	}
 	glog.V(4).Infof("response body is %s", resp.Body)
 
@@ -213,9 +213,9 @@ func parseAPICallResponse(resp *http.Response) (string, error) {
 func (r *Reservation) GetVMTReservation(task *action.PendingTask) (string, error) {
 	taskSpec := GetRequestTaskSpec(task)
 	reservationResult, err := r.RequestPlacement(task.Name, taskSpec, nil)
-	fmt.Printf(" -----> Requesting for task %s and spec %+v \n", task.Name, taskSpec)
+	glog.V(3).Infof(" -----> Requesting for task %s and spec %+v \n", task.Name, taskSpec)
 	if err != nil {
-		fmt.Printf("error in get Reservation line 214  %s\n", err)
+		glog.V(3).Infof("error in get Reservation line 214  %s\n", err)
 		return "", err
 	}
 	return reservationResult, nil

@@ -2,11 +2,10 @@ package metadata
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"os"
-
-	"github.com/golang/glog"
 )
 
 const (
@@ -53,7 +52,7 @@ type VMTMeta struct {
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
 // Ops Manager Password should be set by user. Other fields have default values and can be overrided.
 func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
-	fmt.Println("in newVMTMeta")
+	glog.V(4).Infof("in newVMTMeta\n")
 	meta := &VMTMeta{
 		// ServerAddress:      SERVER_ADDRESS,
 		TargetType: TARGET_TYPE,
@@ -74,13 +73,15 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 	if metaConfig.MesosActionIP != "" {
 		meta.MesosActionIP = metaConfig.MesosActionIP
 	} else {
-		return nil, fmt.Errorf("Error getting LayerX Master.")
+		glog.V(4).Infof("Error getting LayerX Master\n")
+		return nil, errors.New("Error getting LayerX Master.")
 	}
 
 	if metaConfig.MesosActionPort != "" {
 		meta.MesosActionPort = metaConfig.MesosActionPort
 	} else {
-		return nil, fmt.Errorf("Error getting LayerX Master.")
+		glog.V(4).Infof("Error getting LayerX Master.\n")
+		return nil, errors.New("error getting LayerX Master\n")
 	}
 
 	if metaConfig.ServerAddress != "" {
@@ -88,7 +89,8 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 		glog.V(3).Infof("VMTurbo Server Address is %s", meta.ServerAddress)
 
 	} else {
-		return nil, fmt.Errorf("Error getting VMTurbo server address.")
+		glog.V(4).Infof("Error getting VMTurbo server address.")
+		return nil, errors.New("Error getting VMTServer address\n")
 	}
 
 	if metaConfig.TargetIdentifier != "" {
@@ -100,7 +102,8 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 		meta.NameOrAddress = metaConfig.NameOrAddress
 		glog.V(3).Infof("NameOrAddress is %s", meta.NameOrAddress)
 	} else {
-		return nil, fmt.Errorf("Error getting NameorAddress for Kubernetes Probe.")
+		glog.Infof("Error getting NameorAddress for Mesos Probe.")
+		return nil, errors.New("Error getting NameorAddress from Mesos Probe")
 	}
 
 	if metaConfig.Username != "" {
@@ -123,14 +126,16 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 		meta.OpsManagerUsername = metaConfig.OpsManagerUsername
 		glog.V(3).Infof("OpsManagerUsername is %s", meta.OpsManagerUsername)
 	} else {
-		return nil, fmt.Errorf("Error getting VMTurbo Ops Manager Username.")
+		glog.V(4).Infof("Error getting VMTurbo Ops Manager Username.")
+		return nil, errors.New("Error getting OpsManager Username")
 	}
 
 	if metaConfig.OpsManagerPassword != "" {
 		meta.OpsManagerPassword = metaConfig.OpsManagerPassword
 		glog.V(3).Infof("OpsManagerPassword is %s", meta.OpsManagerPassword)
 	} else {
-		return nil, fmt.Errorf("Error getting VMTurbo Ops Manager Password.")
+		glog.V(4).Infof("Error getting VMTurbo Ops Manager Password.")
+		return nil, errors.New("Error getting OpsManager Password")
 	}
 
 	return meta, nil

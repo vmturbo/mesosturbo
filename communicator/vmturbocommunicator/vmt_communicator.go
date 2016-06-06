@@ -1,8 +1,6 @@
 package vmturbocommunicator
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
 	vmtapi "github.com/vmturbo/mesosturbo/communicator/vmtapi"
@@ -74,7 +72,7 @@ func (vmtcomm *VMTCommunicator) RegisterMesos() {
 	containerInfo := &comm.ContainerInfo{
 		Probes: probes,
 	}
-	fmt.Printf("Send registration message: %+v", containerInfo)
+	glog.V(3).Infof("Send registration message: %+v", containerInfo)
 	vmtcomm.wsComm.RegisterAndListen(containerInfo)
 }
 
