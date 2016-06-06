@@ -107,14 +107,15 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	glog.V(3).Infof(".......... Now use builder to create a supply chain ..........")
 
 	fakeKey := "fake"
+	emptyKey := ""
 
 	slaveSupplyChainNodeBuilder := sdk.NewSupplyChainNodeBuilder()
 	slaveSupplyChainNodeBuilder = slaveSupplyChainNodeBuilder.
 		Entity(sdk.EntityDTO_VIRTUAL_MACHINE).
 		Selling(sdk.CommodityDTO_CPU_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_MEM_ALLOCATION, fakeKey).
-		Selling(sdk.CommodityDTO_VCPU, fakeKey).
-		Selling(sdk.CommodityDTO_VMEM, fakeKey).
+		Selling(sdk.CommodityDTO_VCPU, emptyKey).
+		Selling(sdk.CommodityDTO_VMEM, emptyKey).
 		Selling(sdk.CommodityDTO_APPLICATION, fakeKey)
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
@@ -188,8 +189,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	// Link from Application to VM
 	vmAppExtLinkBuilder := sdk.NewExternalEntityLinkBuilder()
 	vmAppExtLinkBuilder.Link(sdk.EntityDTO_APPLICATION, sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_HOSTING).
-		Commodity(vCpuType, true).
-		Commodity(vMemType, true).
+		Commodity(vCpuType, false).
+		Commodity(vMemType, false).
 		Commodity(appCommType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Application is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)

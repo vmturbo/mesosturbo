@@ -447,7 +447,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		}
 		slaveIP := util.GetSlaveIP(s)
 		m.SlaveIdIpMap[s.Id] = slaveIP
-		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name, commoditiesSold)
+		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name+"foo", commoditiesSold)
 		result = append(result, entityDTO)
 	}
 	glog.V(4).Infof(" entity DTOs : %d\n", len(result))

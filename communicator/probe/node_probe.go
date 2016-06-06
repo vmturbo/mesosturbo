@@ -92,13 +92,13 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
 	vMemComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(slaveInfo.Id).
+		//Key(slaveInfo.Id).
 		Capacity(nodeResourceStat.vMemCapacity).
 		Used(nodeResourceStat.vMemUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vMemComm)
 	vCpuComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(slaveInfo.Id).
+		//Key(slaveInfo.Id).
 		Capacity(float64(nodeResourceStat.vCpuCapacity)).
 		Used(nodeResourceStat.vCpuUsed).
 		Create()
@@ -107,14 +107,5 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Key(slaveInfo.Id).
 		Create()
 	commoditiesSold = append(commoditiesSold, appComm)
-	//	labelsmap := node.ObjectMeta.Labels
-	//	if len(labelsmap) > 0 {
-	//		for key, value := range labelsmap {
-	//			str1 := key + "=" + value
-	//			glog.V(4).Infof("label for this Node is : %s", str1)
-	//			accessComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).Key(str1).Create()
-	//			commoditiesSold = append(commoditiesSold, accessComm)
-	//		}
-	//	}
 	return commoditiesSold, nil
 }
