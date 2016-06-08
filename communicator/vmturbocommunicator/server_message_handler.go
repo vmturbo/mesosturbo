@@ -549,8 +549,8 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 func buildTaskAppEntityDTO(slaveIdIp map[string]string, task *util.Task, commoditiesSold []*sdk.CommodityDTO, commoditiesBoughtMap map[*sdk.ProviderDTO][]*sdk.CommodityDTO) *sdk.EntityDTO {
 	appEntityType := sdk.EntityDTO_APPLICATION
 	id := task.Name + "::" + "APP:" + task.Id
-	dispName := "APP:" + task.Name
-	entityDTOBuilder := sdk.NewEntityDTOBuilder(appEntityType, id)
+	dispName := "APP:" + task.Name + "foofoo"
+	entityDTOBuilder := sdk.NewEntityDTOBuilder(appEntityType, id+"foo")
 	entityDTOBuilder = entityDTOBuilder.DisplayName(dispName)
 
 	entityDTOBuilder.SellsCommodities(commoditiesSold)

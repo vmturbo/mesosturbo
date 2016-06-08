@@ -317,22 +317,24 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("parameterString %s", parameterString)
+	glog.V(4).Infof("parameterString %s\n", parameterString)
 	reservationUUID, err := vmturboApi.Post("/reservations", parameterString)
 	if err != nil {
+		glog.V(4).Infof("Error posting reservations %s \n", err)
 		return "", fmt.Errorf("Error posting reservations: %s", err)
 	}
 	reservationUUID = strings.Replace(reservationUUID, "\n", "", -1)
-	glog.V(3).Infof("Reservation UUID is %s", string(reservationUUID))
+	glog.V(3).Infof("Reservation UUID is %s\n", string(reservationUUID))
 
 	var getResponse string
 	var getRevErr error
+	var dest string
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
 	for counter := 0; counter < 10; counter++ {
 		time.Sleep(2 * time.Second)
 		fmt.Printf("reserve UUID  %s", reservationUUID)
 		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
-		dest, err := GetTaskReservationDestination(getResponse)
+		dest, err = GetTaskReservationDestination(getResponse)
 		if err != nil {
 			fmt.Errorf("Error getting reservations destinations: %s \n", err)
 		}
@@ -356,7 +358,6 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
 		}*/
-	dest, err := GetTaskReservationDestination(getResponse)
 	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
 	fmt.Println("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
