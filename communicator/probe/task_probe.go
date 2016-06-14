@@ -21,11 +21,12 @@ type TaskProbe struct {
 
 // Get current stat of node resources, such as capacity and used values.
 func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, task *util.Task, taskUseMap map[string]*util.CalculatedUse) (*TaskResourceStat, error) {
-	// TODO! Here we assume when user defines a pod, resource requirements are also specified.
 	// The metrics we care about now are Cpu and Mem.
+	// TODO io metrics
 	//requests := task.Resources.Limits
-	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
+	glog.V(3).Infof("---------------------> task.Resources.CPUs is %f\n", task.Resources.CPUs)
 	cpuCapacity := task.Resources.CPUs * float64(2000.00)
+	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
 
 	glog.V(4).Infof("Discovered task is " + task.Id)
 	glog.V(4).Infof("Container capacity is %f \n", cpuCapacity)
@@ -33,7 +34,6 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 
 	if taskUseMap != nil {
 		glog.V(4).Infof("Task use map is nil.\n")
-		//	fmt.Printf(" task used map is %+v and value is %+v \n", taskUseMap, taskUseMap[task.Id])
 	} else {
 		glog.V(4).Infof("task map is nil.\n")
 	}

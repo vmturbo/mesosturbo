@@ -285,7 +285,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
-	fmt.Println("Get Succeed: %v", respContent)
+	glog.V(3).Infof("Get Succeed: %v\n", respContent)
 	defer resp.Body.Close()
 
 	fullUrl = "http://" + handler.meta.MesosActionIP + ":5050" + "/tasks"
@@ -324,7 +324,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		//	fmt.Printf("----> tasks from mesos: # %d, name : %s, state: %s\n", j, t.Name, t.State)
 	}
 	respContent.TaskMasterAPI = *taskContent
-	fmt.Printf("tasks response is %+v \n", resp.Body)
+	glog.V(4).Infof("tasks response is %+v \n", resp.Body)
 	defer resp.Body.Close()
 
 	// STATS
@@ -365,21 +365,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 			executor := arrOfExec[j]
 			// TODO check if this is taskId
 			taskId := executor.Source
-			/*
-				res = &util.Resources{
-					Disk: float64(0),
-					// convert mem to MB
-					Mem:  executor.Statistics.MemLimitBytes / float64(1024.00),
-					CPUs: executor.Statistics.CPUsLimit,
-				}
-			*/
 			mapTaskRes[taskId] = executor.Statistics
 			// TASK MONITOR
 			if _, ok := mapTaskUse[taskId]; !ok {
 				var prevSecs float64
-				//	fmt.Println("          CALCULATION START :::")
-				//	fmt.Printf("executor.Statistics.CPUsystemTimeSecs : %f \n", executor.Statistics.CPUsystemTimeSecs)
-				//	fmt.Printf("executor.Statistics.CPUuserTimeSecs :%f \n", executor.Statistics.CPUuserTimeSecs)
+				// CPU use CALCULATION STARTS
 
 				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
 				if handler.lastDiscoveryTime == nil {
@@ -395,6 +385,9 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 					glog.V(4).Infof("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
 				}
 				diffSecs := curSecs - prevSecs
+				if diffSecs < 0 {
+					diffSecs = float64(0.0)
+				}
 				glog.V(4).Infof(" t1 - t0 : %f \n", diffSecs)
 				var lastTime time.Time
 				if handler.lastDiscoveryTime == nil {
@@ -408,16 +401,19 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 				//	fmt.Printf("time since last discovery in sec : %f \n", diffT)
 				usedCPUfraction := diffSecs / diffT
 				// ratio * cores * 1000kHz
-				//	fmt.Printf("-------------> utilization CPU %f", usedCPUfraction)
+				glog.V(4).Infof("-------------> Fraction of CPU utilization: %f \n", usedCPUfraction)
 
+				// s.Resources is # of cores
+				// usedCPU is in MHz
 				usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
 				mapTaskUse[taskId] = &util.CalculatedUse{
 					CPUs:                 usedCPU,
 					CPUsumSystemUserSecs: curSecs,
 				}
-				//	fmt.Printf("-------------> used CPU %f", usedCPU)
-				// TODO for slave sum
-				//		s.Calculated.CPUs = usedCPU
+				glog.V(4).Infof("------------> Capacity in CPUs, directly from Mesos %f \n", s.Resources.CPUs)
+				glog.V(4).Infof("------------->Used CPU in MHz : %f \n", usedCPU)
+
+				// Sum the used CPU in MHz for each slave
 				mapSlaveUse[s.Id].CPUs = usedCPU + mapSlaveUse[s.Id].CPUs
 			}
 		} // task loop
@@ -512,7 +508,6 @@ func parseAPITasksResponse(resp *http.Response) (*util.MasterTasks, error) {
 	var jsonTasks = new(util.MasterTasks)
 	err = json.Unmarshal(byteContent, &jsonTasks)
 
-	//	fmt.Printf("the MesosAPIResponse disk %f , mem %f , cpus %f  \n", res.Disk, res.Mem, res.CPUs)
 	if err != nil {
 		glog.Errorf("error in json unmarshal : %s", err)
 	}
@@ -532,14 +527,10 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 		return nil, err
 	}
 
-	//	fmt.Println(" response was: %s", string(content))
-
 	glog.V(4).Infof("response content is %s", string(content))
 	byteContent := []byte(content)
 	var jsonMesosMaster = new(util.MesosAPIResponse)
 	err = json.Unmarshal(byteContent, &jsonMesosMaster)
-	res := jsonMesosMaster.Slaves[0].Resources
-	fmt.Printf("the MesosAPIResponse disk %f , mem %f , cpus %f  \n", res.Disk, res.Mem, res.CPUs)
 	if err != nil {
 		glog.Errorf("error in json unmarshal : %s", err)
 	}

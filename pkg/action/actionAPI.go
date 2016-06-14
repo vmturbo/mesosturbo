@@ -39,7 +39,9 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 	glog.V(4).Infof("----> request is : %+v\n", req)
 	fmt.Printf("response status %s Headers: %s \n", resp.Header, resp.Status)
 	if !strings.Contains(resp.Status, "202 Accepted") {
-		glog.Errorf("Error while migrating tasks \n")
+		if mesosClient.Action == "MigrateTasks" {
+			glog.Errorf("Error while migrating tasks \n")
+		}
 	}
 
 	body, _ := ioutil.ReadAll(resp.Body)

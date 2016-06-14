@@ -312,7 +312,6 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	vmturboApi := NewVmtApi(this.Meta.ServerAddress, extCongfix)
 
 	glog.V(4).Info("Inside RequestPlacement")
-	fmt.Println("inside RequestPlacement")
 	parameterString, err := buildReservationParameterString(requestSpec)
 	if err != nil {
 		return "", err
@@ -332,14 +331,14 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
 	for counter := 0; counter < 10; counter++ {
 		time.Sleep(2 * time.Second)
-		fmt.Printf("reserve UUID  %s", reservationUUID)
+		glog.V(3).Infof("reserve UUID  %s \n", reservationUUID)
 		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
 		dest, err = GetTaskReservationDestination(getResponse)
 		if err != nil {
 			fmt.Errorf("Error getting reservations destinations: %s \n", err)
 		}
 		if dest != "" {
-			fmt.Printf("Got a reservation destination! \n")
+			glog.V(3).Infof("Got a reservation destination! \n")
 			break
 		}
 	}
@@ -353,15 +352,11 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	if getRevErr != nil {
 		return "", fmt.Errorf("Error getting reservations destinations: %s", err)
 	}
-	/*
-		containerToSlaveMap, err := parseGetReservationResponse(containerName, getResponse)
-		if err != nil {
-			return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
-		}*/
+
 	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
-	fmt.Println("The full Url is ", fullUrl)
+	glog.V(4).Infof("The full Url is %s \n", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
-	fmt.Println(req)
+	glog.V(3).Infof("GET request is :  %+v\n", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -371,13 +366,13 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	fmt.Println("Get Succeed: %v", respMap)
+	glog.V(3).Infof("Get request for placement Succeeded: %v \n", respMap)
 	defer resp.Body.Close()
 
 	if err != nil {
-		fmt.Println("error line 342 vmtapi")
+		glog.V(3).Infof("Error: %s\n", err)
 	}
-	fmt.Printf("destination is: %s", dest)
+	glog.V(3).Infof("Destination is: %s \n", dest)
 	return respMap[dest], nil
 }
 
@@ -462,21 +457,22 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 		time.Sleep(time.Second * 5)
 		pending, err := action.RequestPendingTasks(client)
 		if err != nil {
-			fmt.Printf("error %s \n", err)
+			glog.V(3).Infof("error %s \n", err)
 		}
 
 		if len(pending) > 0 {
 			var taskDestinationMap = make(map[string]string)
 			var newreservation *Reservation
 			for i := range pending {
-				fmt.Printf("pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
+				glog.V(3).Infof("Pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
 				newreservation = &Reservation{
 					Meta: mesosmetadata,
 				}
 				name := pending[i].Name
 				taskDestinationMap[name], err = newreservation.GetVMTReservation(pending[i])
+				//TODO is result == "" it's a timeout???
 				if err != nil {
-					fmt.Printf("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
+					glog.V(3).Infof("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
 					continue
 				}
 				// assign Tasks if we got a placement
@@ -485,9 +481,9 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 				client.TaskId = pending[i].Id
 				res, err := action.RequestMesosAction(client)
 				if err != nil {
-					fmt.Printf("error %s \n", err)
+					glog.V(4).Infof("error %s \n", err)
 				}
-				fmt.Printf("result is : %s \n", res)
+				glog.V(3).Infof("Result after LayerX placement is : %s \n", res)
 			}
 		}
 	}
