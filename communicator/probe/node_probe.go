@@ -45,7 +45,7 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave, useMap ma
 
 	// Get the node Cpu and Mem capacity.
 	nodeCpuCapacity := slaveInfo.Resources.CPUs * float64(2000) //float64(slaveInfo.Resources.CPUs) * float64(cpuFrequency)
-	nodeMemCapacity := slaveInfo.Resources.Mem                  //float64(slaveInfo.Resources.Mem) / 1024 // Mem is returned in B
+	nodeMemCapacity := slaveInfo.Resources.Mem                  // Mem is returned in B
 	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
 	glog.V(4).Infof("Node CPU capacity is %f \n", nodeCpuCapacity)
 	glog.V(4).Infof("Node Mem capacity is %f \n", nodeMemCapacity)

@@ -276,10 +276,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	}
 	// UPDATE RESOURCE UNITS AFTER HTTP REQUEST
 	for idx := range respContent.Slaves {
-		s := respContent.Slaves[idx]
+		s := &respContent.Slaves[idx]
 		s.Resources.Mem = s.Resources.Mem * float64(1024)
 		s.UsedResources.Mem = s.UsedResources.Mem * float64(1024)
 		s.OfferedResources.Mem = s.OfferedResources.Mem * float64(1024)
+		glog.V(3).Infof("=======> vm resources %+v", respContent.Slaves[idx])
 	}
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
