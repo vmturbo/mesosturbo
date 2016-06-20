@@ -1,7 +1,7 @@
 {
 		"mesosactionip": "10.10.174.91",
 		"mesosactionport": "5555",
-		"serveraddress": "10.10.200.82:8080",
+		"serveraddress": "192.168.1.113:8080",
 		"targettype":"Mesos",
 		"nameoraddress":  "mesos",
 		"username":"mesos_user",
