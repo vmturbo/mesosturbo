@@ -7,14 +7,16 @@ import (
 )
 
 type NodeResourceStat struct {
-	cpuAllocationCapacity float64
-	cpuAllocationUsed     float64
-	memAllocationCapacity float64
-	memAllocationUsed     float64
-	vCpuCapacity          float64
-	vCpuUsed              float64
-	vMemCapacity          float64
-	vMemUsed              float64
+	diskAllocationCapacity float64
+	diskAllocationUsed     float64
+	cpuAllocationCapacity  float64
+	cpuAllocationUsed      float64
+	memAllocationCapacity  float64
+	memAllocationUsed      float64
+	vCpuCapacity           float64
+	vCpuUsed               float64
+	vMemCapacity           float64
+	vMemUsed               float64
 }
 
 // models the probe for a mesos master state , containing metadata about
@@ -45,26 +47,34 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave, useMap ma
 
 	// Get the node Cpu and Mem capacity.
 	nodeCpuCapacity := slaveInfo.Resources.CPUs * float64(2000) //float64(slaveInfo.Resources.CPUs) * float64(cpuFrequency)
-	nodeMemCapacity := slaveInfo.Resources.Mem                  // Mem is returned in B
+	// Mem is returned in B
+	nodeMemCapacity := slaveInfo.Resources.Mem
+	nodeDiskCapacity := slaveInfo.Resources.Disk
 	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
 	glog.V(4).Infof("Node CPU capacity is %f \n", nodeCpuCapacity)
 	glog.V(4).Infof("Node Mem capacity is %f \n", nodeMemCapacity)
+	glog.V(4).Infof("Node Disk capacity is %f \n", nodeDiskCapacity)
+
 	// Find out the used value for each commodity
-	cpuUsed := useMap[slaveInfo.Id].CPUs   //float64(rootCurCpu) * float64(cpuFrequency)
-	memUsed := slaveInfo.UsedResources.Mem //float64(rootCurMem)
+	cpuUsed := useMap[slaveInfo.Id].CPUs
+	memUsed := slaveInfo.UsedResources.Mem
+	diskUsed := slaveInfo.UsedResources.Disk
 	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
 	glog.V(4).Infof("=======> Node CPU used is %f \n", cpuUsed)
 	glog.V(4).Infof("Node Mem used is %f \n", memUsed)
+	glog.V(4).Infof("Node Disk used is %f \n", diskUsed)
 
 	return &NodeResourceStat{
-		cpuAllocationCapacity: nodeCpuCapacity,
-		cpuAllocationUsed:     cpuUsed,
-		memAllocationCapacity: nodeMemCapacity,
-		memAllocationUsed:     memUsed,
-		vCpuCapacity:          nodeCpuCapacity,
-		vCpuUsed:              cpuUsed,
-		vMemCapacity:          nodeMemCapacity,
-		vMemUsed:              memUsed,
+		diskAllocationCapacity: nodeDiskCapacity,
+		diskAllocationUsed:     diskUsed,
+		cpuAllocationCapacity:  nodeCpuCapacity,
+		cpuAllocationUsed:      cpuUsed,
+		memAllocationCapacity:  nodeMemCapacity,
+		memAllocationUsed:      memUsed,
+		vCpuCapacity:           nodeCpuCapacity,
+		vCpuUsed:               cpuUsed,
+		vMemCapacity:           nodeMemCapacity,
+		vMemUsed:               memUsed,
 	}, nil
 
 }
@@ -91,6 +101,12 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Used(nodeResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
+	diskAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+		Key("Mesos").
+		Capacity(float64(nodeResourceStat.diskAllocationCapacity)).
+		Used(nodeResourceStat.diskAllocationUsed).
+		Create()
+	commoditiesSold = append(commoditiesSold, diskAllocationComm)
 	vMemComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
 		//Key(slaveInfo.Id).
 		Capacity(nodeResourceStat.vMemCapacity).

@@ -21,6 +21,8 @@ type Statistics struct {
 	MemRSSBytes       float64 `json:"mem_rss_bytes"`
 	CPUsystemTimeSecs float64 `json:"cpus_system_time_secs"`
 	CPUuserTimeSecs   float64 `json:"cpus_user_time_secs"`
+	DiskLimitBytes    float64 `json:"disk_limit_bytes"`
+	DiskUsedBytes     float64 `json:"disk_used_bytes"`
 }
 
 type Executor struct {
