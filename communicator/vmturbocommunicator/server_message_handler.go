@@ -127,7 +127,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	clientMsg := comm.NewClientMessageBuilder(messageID).SetDiscoveryResponse(discoveryResponse).Create()
 	curtime := time.Now()
 	handler.lastDiscoveryTime = &curtime
-	glog.V(3).Infof(" Discovery msg : %+v", clientMsg)
+	//	glog.V(3).Infof(" Discovery msg : %+v", clientMsg)
 	handler.wsComm.SendClientMessage(clientMsg)
 }
 
@@ -276,11 +276,12 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	}
 	// UPDATE RESOURCE UNITS AFTER HTTP REQUEST
 	for idx := range respContent.Slaves {
+		glog.V(3).Infof("Number of slaves %d \n", len(respContent.Slaves))
 		s := &respContent.Slaves[idx]
 		s.Resources.Mem = s.Resources.Mem * float64(1024)
 		s.UsedResources.Mem = s.UsedResources.Mem * float64(1024)
 		s.OfferedResources.Mem = s.OfferedResources.Mem * float64(1024)
-		glog.V(3).Infof("=======> vm resources %+v", respContent.Slaves[idx])
+		glog.V(3).Infof("=======> SLAVE idk: %d name: %s, mem: %.2f, cpu: %.2f, disk: %.2f \n", idx, s.Name, s.Resources.Mem, s.Resources.CPUs, s.Resources.Disk)
 	}
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
@@ -289,15 +290,8 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	glog.V(3).Infof("Get Succeed: %v\n", respContent)
 	defer resp.Body.Close()
 
-	fullUrl = "http://" + handler.meta.MesosActionIP + ":5050" + "/tasks"
-	fmt.Println("The tasks full Url is ", fullUrl)
-	req, err = http.NewRequest("GET", fullUrl, nil)
-
-	glog.V(4).Infof("%+v", req)
-	client = &http.Client{}
-	resp, err = client.Do(req)
-	if err != nil {
-		glog.Errorf("Error getting tasks response: %s", err)
+	if respContent.Frameworks == nil {
+		glog.Errorf("Error getting Frameworks response: %s", err)
 		return nil, err
 	}
 	/*
@@ -313,16 +307,22 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		}
 		taskContent := jsonTasks
 	*/
-	taskContent, err := parseAPITasksResponse(resp)
+
+	//We pass the entire http response as the respContent object
+	taskContent, err := parseAPITasksResponse(respContent)
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
+	glog.V(3).Infof("Number of tasks \n", len(taskContent.Tasks))
+
 	for j := range taskContent.Tasks {
 		t := taskContent.Tasks[j]
 		// MEM UNITS KB
 		t.Resources.Mem = t.Resources.Mem * float64(1024)
 		//	fmt.Printf("----> tasks from mesos: # %d, name : %s, state: %s\n", j, t.Name, t.State)
+		glog.V(3).Infof("=======> TASK name: %s, mem: %.2f, cpu: %.2f, disk: %.2f \n", t.Name, t.Resources.Mem, t.Resources.CPUs, t.Resources.Disk)
+
 	}
 	respContent.TaskMasterAPI = *taskContent
 	glog.V(4).Infof("tasks response is %+v \n", resp.Body)
@@ -490,29 +490,27 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 	return result, nil
 }
 
-func parseAPITasksResponse(resp *http.Response) (*util.MasterTasks, error) {
+func parseAPITasksResponse(resp *util.MesosAPIResponse) (*util.MasterTasks, error) {
 	glog.V(4).Infof("----> in parseAPICallResponse")
 	if resp == nil {
 		return nil, fmt.Errorf("response sent in is nil")
 	}
-	glog.V(3).Infof(" from glog response body is %s", resp.Body)
+	glog.V(3).Infof(" Number of frameworks is %d\n", len(resp.Frameworks))
 
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		glog.Errorf("Error after ioutil.ReadAll: %s", err)
-		return nil, err
+	allTasks := make([]util.Task, 0)
+	for i := range resp.Frameworks {
+		if resp.Frameworks[i].Tasks != nil {
+			ftasks := resp.Frameworks[i].Tasks
+			for j := range ftasks {
+				allTasks = append(allTasks, ftasks[j])
+			}
+			glog.V(3).Infof(" Number of tasks is %d\n", len(resp.Frameworks[i].Tasks))
+		}
 	}
-
-	glog.V(4).Infof("response content is %s", string(content))
-
-	byteContent := []byte(content)
-	var jsonTasks = new(util.MasterTasks)
-	err = json.Unmarshal(byteContent, &jsonTasks)
-
-	if err != nil {
-		glog.Errorf("error in json unmarshal : %s", err)
+	tasksObj := &util.MasterTasks{
+		Tasks: allTasks,
 	}
-	return jsonTasks, nil
+	return tasksObj, nil
 }
 
 func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) {

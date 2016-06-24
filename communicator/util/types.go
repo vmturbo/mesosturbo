@@ -42,12 +42,12 @@ type Slave struct {
 }
 
 type MesosAPIResponse struct {
-	Version           string  `json:"version"`
-	Id                string  `json:"id"`
-	ActivatedSlaves   float64 `json:"activated_slaves"`
-	DeActivatedSlaves float64 `json:"deactivated_slaves"`
-	Slaves            []Slave `json:"slaves"`
-	//Frameworks        []Framework `json:"frameworks"`
+	Version           string      `json:"version"`
+	Id                string      `json:"id"`
+	ActivatedSlaves   float64     `json:"activated_slaves"`
+	DeActivatedSlaves float64     `json:"deactivated_slaves"`
+	Slaves            []Slave     `json:"slaves"`
+	Frameworks        []Framework `json:"frameworks"`
 	TaskMasterAPI     MasterTasks
 	SlaveIdIpMap      map[string]string
 	MapTaskStatistics map[string]Statistics
@@ -110,6 +110,17 @@ type Task struct {
 	Name        string    `json:"name"`
 	Statuses    []Status  `json:"statuses"`
 	State       string    `json:"state"`
+}
+
+type Framework struct {
+	Id        string    `json:"id"`
+	Name      string    `json:"name"`
+	Pid       string    `json:"pid"`
+	Hostname  string    `json:"hostname"`
+	Active    bool      `json:"active"`
+	Role      string    `json:"role"`
+	Resources Resources `json:"resources"`
+	Tasks     []Task    `json:"tasks"`
 }
 
 type MasterTasks struct {
