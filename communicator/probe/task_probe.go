@@ -29,7 +29,7 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 	glog.V(3).Infof("---------------------> task.Resources.CPUs is %f\n", task.Resources.CPUs)
 	cpuCapacity := task.Resources.CPUs * float64(2000.00)
 	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
-	diskCapacity := mapT[task.Id].DiskLimitBytes / float64(1024.00)
+	diskCapacity := mapT[task.Id].DiskLimitBytes / float64(1024.00*1024.00)
 
 	glog.V(4).Infof("Discovered task is " + task.Id)
 	glog.V(4).Infof("Container capacity is %f \n", cpuCapacity)
@@ -43,7 +43,7 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 	memUsed := mapT[task.Id].MemRSSBytes / float64(1024.00)
 	cpuUsed := taskUseMap[task.Id].CPUs
 	// assuming disk unit is KB
-	diskUsed := mapT[task.Id].DiskUsedBytes / float64(1024.00)
+	diskUsed := mapT[task.Id].DiskUsedBytes / float64(1024.00*1024.00)
 
 	return &TaskResourceStat{
 		cpuAllocationCapacity:  cpuCapacity,
