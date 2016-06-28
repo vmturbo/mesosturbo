@@ -117,7 +117,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Selling(sdk.CommodityDTO_STORAGE_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_VCPU, emptyKey).
 		Selling(sdk.CommodityDTO_VMEM, emptyKey).
-		Selling(sdk.CommodityDTO_APPLICATION, fakeKey)
+		Selling(sdk.CommodityDTO_APPLICATION, fakeKey).
+		Selling(sdk.CommodityDTO_CLUSTER, fakeKey)
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
 
@@ -144,13 +145,18 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &diskAllocationType,
 	}
-	//vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
+	clusterType := sdk.CommodityDTO_CLUSTER
+	clusterTemplateComm := &sdk.TemplateCommodity{
+		Key:           &fakeKey,
+		CommodityType: &clusterType,
+	} //vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
 
 	containerSupplyChainNodeBuilder = containerSupplyChainNodeBuilder.
 		Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_LAYERED_OVER).
 		Buys(*cpuAllocationTemplateComm).
 		Buys(*memAllocationTemplateComm).
-		Buys(*diskAllocationTemplateComm)
+		Buys(*diskAllocationTemplateComm).
+		Buys(*clusterTemplateComm)
 	glog.V(3).Infof(".......... container supply chain node builder is created ..........")
 
 	// Application supplychain builder
@@ -190,7 +196,18 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &appCommType,
 	}
-	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_HOSTING).Buys(*appVCpu).Buys(*appVMem).Buys(*appAppComm)
+	clusterCommType := sdk.CommodityDTO_CLUSTER
+	appClusterComm := &sdk.TemplateCommodity{
+		Key:           &fakeKey,
+		CommodityType: &clusterCommType,
+	}
+
+	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.
+		Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_HOSTING).
+		Buys(*appVCpu).
+		Buys(*appVMem).
+		Buys(*appAppComm).
+		Buys(*appClusterComm)
 
 	// Link from Pod to VM
 	vmContainerExtLinkBuilder := sdk.NewExternalEntityLinkBuilder()
@@ -198,6 +215,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Commodity(cpuAllocationType, true).
 		Commodity(memAllocationType, true).
 		Commodity(diskAllocationType, true).
+		Commodity(clusterType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Container is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 
@@ -209,6 +227,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Commodity(vCpuType, false).
 		Commodity(vMemType, false).
 		Commodity(appCommType, true).
+		Commodity(clusterCommType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Application is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 

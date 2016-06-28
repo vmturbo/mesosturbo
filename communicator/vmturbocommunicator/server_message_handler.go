@@ -425,6 +425,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	handler.slaveUseMap = mapSlaveUse
 	respContent.MapTaskStatistics = mapTaskRes
 	respContent.SlaveUseMap = mapSlaveUse
+	respContent.ClusterData.MasterIP = handler.MesosActionIP
 	return respContent, nil
 }
 

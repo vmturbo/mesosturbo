@@ -56,6 +56,13 @@ type MesosAPIResponse struct {
 	SlaveUseMap       map[string]*CalculatedUse
 	// TODO use this?
 	MapSlaveToTasks map[string][]Task
+	//cluster
+	Cluster ClusterInfo
+}
+
+type ClusterInfo struct {
+	MasterIP string
+	MasterId string
 }
 
 type ContDocker struct {

@@ -123,5 +123,9 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Key(slaveInfo.Id).
 		Create()
 	commoditiesSold = append(commoditiesSold, appComm)
+	clusterComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+		Key(nodeProbe.ClusterData.MasterIP).
+		Create()
+	commoditiesSold = append(commoditiesSold, appComm)
 	return commoditiesSold, nil
 }
