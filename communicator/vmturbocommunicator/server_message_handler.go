@@ -425,7 +425,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	handler.slaveUseMap = mapSlaveUse
 	respContent.MapTaskStatistics = mapTaskRes
 	respContent.SlaveUseMap = mapSlaveUse
-	respContent.ClusterData.MasterIP = handler.MesosActionIP
+	respContent.Cluster.MasterIP = handler.meta.MesosActionIP
 	return respContent, nil
 }
 
@@ -437,6 +437,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		// build sold commodities
 		slaveProbe := &probe.NodeProbe{
 			MasterState: m,
+			Cluster:     &m.Cluster,
 		}
 		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s, slaveUseMap)
 		if err != nil {
@@ -460,7 +461,8 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 			continue
 		}
 		taskProbe := &probe.TaskProbe{
-			Task: &taskList[i],
+			Task:    &taskList[i],
+			Cluster: &m.Cluster,
 		}
 		if taskProbe.Task.State != "TASK_RUNNING" {
 			glog.V(4).Infof("=====> not running task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)

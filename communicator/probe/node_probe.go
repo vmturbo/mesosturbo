@@ -23,6 +23,7 @@ type NodeResourceStat struct {
 // all of the slaves
 type NodeProbe struct {
 	MasterState *util.MesosAPIResponse
+	Cluster     *util.ClusterInfo
 }
 
 // Get current stat of node resources, such as capacity and used values.
@@ -124,8 +125,8 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Create()
 	commoditiesSold = append(commoditiesSold, appComm)
 	clusterComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
-		Key(nodeProbe.ClusterData.MasterIP).
+		Key(nodeProbe.Cluster.MasterIP).
 		Create()
-	commoditiesSold = append(commoditiesSold, appComm)
+	commoditiesSold = append(commoditiesSold, clusterComm)
 	return commoditiesSold, nil
 }

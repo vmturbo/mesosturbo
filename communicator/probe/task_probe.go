@@ -18,7 +18,8 @@ type TaskResourceStat struct {
 // models the probe for a mesos master state , containing metadata about
 // all of the slaves
 type TaskProbe struct {
-	Task *util.Task
+	Task    *util.Task
+	Cluster *util.ClusterInfo
 }
 
 // Get current stat of node resources, such as capacity and used values.
@@ -97,6 +98,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		Used(taskResourceStat.diskAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, diskAllocationCommBought)
+	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+		Key(taskProbe.Cluster.MasterIP).
+		Create()
+	commoditiesBought = append(commoditiesBought, clusterCommBought)
+
 	// TODO vmpm  access commodity
 	return commoditiesBought
 }
@@ -157,6 +163,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	appCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(task.SlaveId).
 		Create()
+	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+		Key(taskProbe.Cluster.MasterIP).
+		Create()
+	commoditiesBought = append(commoditiesBought, clusterCommBought)
+
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, appCommBought)
 	commoditiesBoughtMap[slaveProvider] = commoditiesBoughtFromSlave
 	return commoditiesBoughtMap
