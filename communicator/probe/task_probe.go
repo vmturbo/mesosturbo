@@ -99,11 +99,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		Create()
 	commoditiesBought = append(commoditiesBought, diskAllocationCommBought)
 	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
-		Key(taskProbe.Cluster.MasterIP).
+		Key(taskProbe.Cluster.ClusterName).
 		Create()
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
 	vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
-		Key(taskProbe.Cluster.MasterIP).
+		Key(taskProbe.Cluster.ClusterName).
 		Create()
 	commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
 

@@ -58,9 +58,11 @@ type MesosAPIResponse struct {
 	MapSlaveToTasks map[string][]Task
 	//cluster
 	Cluster ClusterInfo
+	ClusterName	  string       `json:"cluster"`
 }
 
 type ClusterInfo struct {
+	ClusterName string
 	MasterIP string
 	MasterId string
 }

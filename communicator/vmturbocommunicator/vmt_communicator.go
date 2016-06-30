@@ -118,7 +118,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Selling(sdk.CommodityDTO_VCPU, emptyKey).
 		Selling(sdk.CommodityDTO_VMEM, emptyKey).
 		Selling(sdk.CommodityDTO_APPLICATION, fakeKey).
-		Selling(sdk.CommodityDTO_CLUSTER, fakeKey)
+		Selling(sdk.CommodityDTO_CLUSTER, fakeKey).
+		Selling(sdk.CommodityDTO_VMPM_ACCESS, fakeKey)
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
 
@@ -150,7 +151,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
 	}
-	//vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
+	vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
 	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
 	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
 			Key:           &fakeKey,
@@ -216,6 +217,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Commodity(memAllocationType, true).
 		Commodity(diskAllocationType, true).
 		Commodity(clusterType, true).
+		Commodity(vmpmaccessType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Container is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 
