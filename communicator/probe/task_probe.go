@@ -102,6 +102,10 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		Key(taskProbe.Cluster.MasterIP).
 		Create()
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
+	vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
+		Key(taskProbe.Cluster.MasterIP).
+		Create()
+	commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
 
 	// TODO vmpm  access commodity
 	return commoditiesBought
@@ -163,10 +167,6 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	appCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(task.SlaveId).
 		Create()
-	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
-		Key(taskProbe.Cluster.MasterIP).
-		Create()
-	commoditiesBought = append(commoditiesBought, clusterCommBought)
 
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, appCommBought)
 	commoditiesBoughtMap[slaveProvider] = commoditiesBoughtFromSlave

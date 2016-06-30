@@ -149,8 +149,14 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	clusterTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
-	} //vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
-
+	}
+	//vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
+	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
+	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
+			Key:           &fakeKey,
+			CommodityType: &vmpmAccessType,
+		}
+	*/
 	containerSupplyChainNodeBuilder = containerSupplyChainNodeBuilder.
 		Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_LAYERED_OVER).
 		Buys(*cpuAllocationTemplateComm).
@@ -182,6 +188,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Buys(*appDiskAllocationTemplateComm).
 		Buys(*appCpuAllocationTemplateComm).
 		Buys(*appMemAllocationTemplateComm)
+
 	// Buys VCpu and VMem from VM
 	vCpuType := sdk.CommodityDTO_VCPU
 	appVCpu := &sdk.TemplateCommodity{
@@ -196,18 +203,11 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &appCommType,
 	}
-	clusterCommType := sdk.CommodityDTO_CLUSTER
-	appClusterComm := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
-		CommodityType: &clusterCommType,
-	}
-
 	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.
 		Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_HOSTING).
 		Buys(*appVCpu).
 		Buys(*appVMem).
-		Buys(*appAppComm).
-		Buys(*appClusterComm)
+		Buys(*appAppComm)
 
 	// Link from Pod to VM
 	vmContainerExtLinkBuilder := sdk.NewExternalEntityLinkBuilder()
@@ -227,7 +227,6 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Commodity(vCpuType, false).
 		Commodity(vMemType, false).
 		Commodity(appCommType, true).
-		Commodity(clusterCommType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Application is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 
