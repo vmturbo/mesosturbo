@@ -21,6 +21,8 @@ type Statistics struct {
 	MemRSSBytes       float64 `json:"mem_rss_bytes"`
 	CPUsystemTimeSecs float64 `json:"cpus_system_time_secs"`
 	CPUuserTimeSecs   float64 `json:"cpus_user_time_secs"`
+	DiskLimitBytes    float64 `json:"disk_limit_bytes"`
+	DiskUsedBytes     float64 `json:"disk_used_bytes"`
 }
 
 type Executor struct {
@@ -40,12 +42,12 @@ type Slave struct {
 }
 
 type MesosAPIResponse struct {
-	Version           string  `json:"version"`
-	Id                string  `json:"id"`
-	ActivatedSlaves   float64 `json:"activated_slaves"`
-	DeActivatedSlaves float64 `json:"deactivated_slaves"`
-	Slaves            []Slave `json:"slaves"`
-	//Frameworks        []Framework `json:"frameworks"`
+	Version           string      `json:"version"`
+	Id                string      `json:"id"`
+	ActivatedSlaves   float64     `json:"activated_slaves"`
+	DeActivatedSlaves float64     `json:"deactivated_slaves"`
+	Slaves            []Slave     `json:"slaves"`
+	Frameworks        []Framework `json:"frameworks"`
 	TaskMasterAPI     MasterTasks
 	SlaveIdIpMap      map[string]string
 	MapTaskStatistics map[string]Statistics
@@ -54,6 +56,15 @@ type MesosAPIResponse struct {
 	SlaveUseMap       map[string]*CalculatedUse
 	// TODO use this?
 	MapSlaveToTasks map[string][]Task
+	//cluster
+	Cluster ClusterInfo
+	ClusterName	  string       `json:"cluster"`
+}
+
+type ClusterInfo struct {
+	ClusterName string
+	MasterIP string
+	MasterId string
 }
 
 type ContDocker struct {
@@ -108,6 +119,17 @@ type Task struct {
 	Name        string    `json:"name"`
 	Statuses    []Status  `json:"statuses"`
 	State       string    `json:"state"`
+}
+
+type Framework struct {
+	Id        string    `json:"id"`
+	Name      string    `json:"name"`
+	Pid       string    `json:"pid"`
+	Hostname  string    `json:"hostname"`
+	Active    bool      `json:"active"`
+	Role      string    `json:"role"`
+	Resources Resources `json:"resources"`
+	Tasks     []Task    `json:"tasks"`
 }
 
 type MasterTasks struct {

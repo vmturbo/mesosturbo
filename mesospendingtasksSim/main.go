@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/cmd/simulation/builder"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
@@ -26,11 +25,11 @@ func main() {
 	if err != nil {
 		glog.Errorf("error from metadata")
 	}
-	glog.V(4).Infof("----> metadata is %+v", metadata)
+	glog.V(4).Infof("----> metadata is %+v \n", metadata)
 	var taskDestinationMap = make(map[string]string)
 	var newreservation *api.Reservation
 	for i := range pending {
-		fmt.Printf("pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
+		glog.V(3).Infof("Pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
 		newreservation = &api.Reservation{
 			Meta: metadata,
 		}

@@ -7,25 +7,30 @@ import (
 )
 
 type TaskResourceStat struct {
-	cpuAllocationCapacity float64
-	cpuAllocationUsed     float64
-	memAllocationCapacity float64
-	memAllocationUsed     float64
+	cpuAllocationCapacity  float64
+	cpuAllocationUsed      float64
+	memAllocationCapacity  float64
+	memAllocationUsed      float64
+	diskAllocationCapacity float64
+	diskAllocationUsed     float64
 }
 
 // models the probe for a mesos master state , containing metadata about
 // all of the slaves
 type TaskProbe struct {
-	Task *util.Task
+	Task    *util.Task
+	Cluster *util.ClusterInfo
 }
 
 // Get current stat of node resources, such as capacity and used values.
 func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, task *util.Task, taskUseMap map[string]*util.CalculatedUse) (*TaskResourceStat, error) {
-	// TODO! Here we assume when user defines a pod, resource requirements are also specified.
 	// The metrics we care about now are Cpu and Mem.
+	// TODO io metrics
 	//requests := task.Resources.Limits
-	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
+	glog.V(3).Infof("---------------------> task.Resources.CPUs is %f\n", task.Resources.CPUs)
 	cpuCapacity := task.Resources.CPUs * float64(2000.00)
+	memCapacity := mapT[task.Id].MemLimitBytes / float64(1024.00)
+	diskCapacity := mapT[task.Id].DiskLimitBytes / float64(1024.00*1024.00)
 
 	glog.V(4).Infof("Discovered task is " + task.Id)
 	glog.V(4).Infof("Container capacity is %f \n", cpuCapacity)
@@ -33,18 +38,21 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 
 	if taskUseMap != nil {
 		glog.V(4).Infof("Task use map is nil.\n")
-		//	fmt.Printf(" task used map is %+v and value is %+v \n", taskUseMap, taskUseMap[task.Id])
 	} else {
 		glog.V(4).Infof("task map is nil.\n")
 	}
 	memUsed := mapT[task.Id].MemRSSBytes / float64(1024.00)
 	cpuUsed := taskUseMap[task.Id].CPUs
+	// assuming disk unit is KB
+	diskUsed := mapT[task.Id].DiskUsedBytes / float64(1024.00*1024.00)
 
 	return &TaskResourceStat{
-		cpuAllocationCapacity: cpuCapacity,
-		cpuAllocationUsed:     cpuUsed,
-		memAllocationCapacity: memCapacity,
-		memAllocationUsed:     memUsed,
+		cpuAllocationCapacity:  cpuCapacity,
+		cpuAllocationUsed:      cpuUsed,
+		memAllocationCapacity:  memCapacity,
+		memAllocationUsed:      memUsed,
+		diskAllocationCapacity: diskCapacity,
+		diskAllocationUsed:     diskUsed,
 	}, nil
 }
 
@@ -63,6 +71,12 @@ func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskR
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
+	diskAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+		Key(task.Id).
+		Capacity(float64(taskResourceStat.diskAllocationCapacity)).
+		Used(taskResourceStat.diskAllocationUsed).
+		Create()
+	commoditiesSold = append(commoditiesSold, diskAllocationComm)
 	return commoditiesSold
 }
 
@@ -79,6 +93,20 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
+	diskAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+		Key("Mesos").
+		Used(taskResourceStat.diskAllocationUsed).
+		Create()
+	commoditiesBought = append(commoditiesBought, diskAllocationCommBought)
+	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+		Key(taskProbe.Cluster.ClusterName).
+		Create()
+	commoditiesBought = append(commoditiesBought, clusterCommBought)
+	vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
+		Key(taskProbe.Cluster.ClusterName).
+		Create()
+	commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
+
 	// TODO vmpm  access commodity
 	return commoditiesBought
 }
@@ -113,6 +141,11 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
+	diskAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+		Key(task.Id).
+		Used(taskResourceStat.diskAllocationUsed).
+		Create()
+	commoditiesBought = append(commoditiesBought, diskAllocationCommBought)
 
 	commoditiesBoughtMap[containerProvider] = commoditiesBought
 
@@ -120,13 +153,13 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
 	vCpuCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
-		Key(task.SlaveId).
+		//		Key(task.SlaveId).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vCpuCommBought)
 
 	vMemCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
-		Key(task.SlaveId).
+		//		Key(task.SlaveId).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vMemCommBought)
@@ -134,6 +167,7 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	appCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(task.SlaveId).
 		Create()
+
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, appCommBought)
 	commoditiesBoughtMap[slaveProvider] = commoditiesBoughtFromSlave
 	return commoditiesBoughtMap

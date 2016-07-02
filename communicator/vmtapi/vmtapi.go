@@ -210,13 +210,13 @@ func parseAPICallResponse(resp *http.Response) (string, error) {
 	return string(content), nil
 }
 
-func (r *Reservation) GetVMTReservation(task *action.PendingTask) (string, error) {
-	taskSpec := GetRequestTaskSpec(task)
-	reservationResult, err := r.RequestPlacement(task.Name, taskSpec, nil)
-	glog.V(3).Infof(" -----> Requesting for task %s and spec %+v \n", task.Name, taskSpec)
+func (r *Reservation) GetVMTReservation(uuidString string, pending []*action.PendingTask) (map[string]string, error) {
+	taskSpec := GetRequestTaskSpec(uuidString)
+	reservationResult, err := r.RequestPlacement(pending, taskSpec, nil)
+	glog.V(3).Infof("the destination map is %+v", reservationResult)
 	if err != nil {
 		glog.V(3).Infof("error in get Reservation line 214  %s\n", err)
-		return "", err
+		return nil, err
 	}
 	return reservationResult, nil
 }
@@ -240,16 +240,24 @@ func getTemplateSize(pendingtask *action.PendingTask) string {
 	return template
 }
 
-func GetRequestTaskSpec(task *action.PendingTask) map[string]string {
+func GetRequestTaskSpec(uuidString string) map[string]string {
 	// TODO for sdk how to get size for pod vs task
-	templateUUIDs := getTemplateSize(task)
+	/*	var uuidString string
+		for task, i := range tasks {
+			templateUUID := getTemplateSize(task)
+			if i < len(tasks)-1 {
+				uuidString = uuidString + templateUUID + "&templateUuids[]="
+			} else {
+				uuidString = uuidString + templateUUID
+			}
+		}*/
 	requestMap := make(map[string]string)
 	// TODO this name is not supposed to be hardcoded , same for Kubeturbo
 	requestMap["reservation_name"] = "MesosReservation"
 	//TODO: this should not be hardcoded.
 	requestMap["num_instances"] = "1"
-	requestMap["template_name"] = templateUUIDs
-	requestMap["templateUuids[]"] = templateUUIDs
+	requestMap["template_name"] = uuidString
+	requestMap["templateUuids[]"] = uuidString
 	return requestMap
 }
 
@@ -268,6 +276,7 @@ func buildReservationParameterString(requestSpec map[string]string) (string, err
 		requestDataBuffer.WriteString("&")
 	}
 
+	// num_instances is overlooked at server side
 	if num_instances, ok := requestSpec["num_instances"]; !ok {
 		glog.Errorf("num_instances not registered.")
 		return "", fmt.Errorf("num_instances has not been registered.")
@@ -288,13 +297,14 @@ func buildReservationParameterString(requestSpec map[string]string) (string, err
 		requestDataBuffer.WriteString("&")
 	}
 
-	if templateUuids, ok := requestSpec["templateUuids[]"]; !ok {
+	if templateUUIDs, ok := requestSpec["templateUuids[]"]; !ok {
 		glog.Errorf("templateUuids is not specified.")
 		return "", fmt.Errorf("templateUuids[] has not been registered.")
 	} else {
-		requestData["templateUuids[]"] = templateUuids
+		// Iterate over the array of UUIDs
+		requestData["templateUuids[]"] = templateUUIDs
 		requestDataBuffer.WriteString("templateUuids[]=")
-		requestDataBuffer.WriteString(templateUuids)
+		requestDataBuffer.WriteString(templateUUIDs)
 	}
 
 	s := requestDataBuffer.String()
@@ -305,39 +315,40 @@ func buildReservationParameterString(requestSpec map[string]string) (string, err
 // put this in SDK TODO Pam Thursday
 // Create the reservation specification and
 // return map which has container name as key and slave name as value
-func (this *Reservation) RequestPlacement(containerName string, requestSpec, filterProperties map[string]string) (string, error) {
+func (this *Reservation) RequestPlacement(pending []*action.PendingTask, requestSpec, filterProperties map[string]string) (map[string]string, error) {
 	extCongfix := make(map[string]string)
 	extCongfix["Username"] = this.Meta.OpsManagerUsername
 	extCongfix["Password"] = this.Meta.OpsManagerPassword
 	vmturboApi := NewVmtApi(this.Meta.ServerAddress, extCongfix)
 
 	glog.V(4).Info("Inside RequestPlacement")
-	fmt.Println("inside RequestPlacement")
-	parameterString, err := buildReservationParameterString(requestSpec)
+	parameterString, err := buildReservationParameterString(requestSpec) // TODO soon fix exception
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	fmt.Printf("parameterString %s", parameterString)
+	glog.V(4).Infof("parameterString %s\n", parameterString)
 	reservationUUID, err := vmturboApi.Post("/reservations", parameterString)
 	if err != nil {
-		return "", fmt.Errorf("Error posting reservations: %s", err)
+		glog.V(4).Infof("Error posting reservations %s \n", err)
+		return nil, fmt.Errorf("Error posting reservations: %s", err)
 	}
 	reservationUUID = strings.Replace(reservationUUID, "\n", "", -1)
-	glog.V(3).Infof("Reservation UUID is %s", string(reservationUUID))
+	glog.V(3).Infof("Reservation UUID is %s\n", string(reservationUUID))
 
 	var getResponse string
 	var getRevErr error
+	var dest []string
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
 	for counter := 0; counter < 10; counter++ {
 		time.Sleep(2 * time.Second)
-		fmt.Printf("reserve UUID  %s", reservationUUID)
+		glog.V(3).Infof("reserve UUID  %s \n", reservationUUID)
 		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
-		dest, err := GetTaskReservationDestination(getResponse)
+		dest, err = GetTaskReservationDestination(getResponse)
 		if err != nil {
 			fmt.Errorf("Error getting reservations destinations: %s \n", err)
 		}
-		if dest != "" {
-			fmt.Printf("Got a reservation destination! \n")
+		if dest != nil {
+			glog.V(3).Infof("Got a reservation destination! \n")
 			break
 		}
 	}
@@ -345,39 +356,41 @@ func (this *Reservation) RequestPlacement(containerName string, requestSpec, fil
 	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
 	if err != nil {
 		// TODO, Should we return without placement?
-		return "", fmt.Errorf("Error deleting reservations destinations: %s response is : %s \n", err, deleteResponse)
+		return nil, fmt.Errorf("Error deleting reservations destinations: %s response is : %s \n", err, deleteResponse)
 	}
 	//	glog.V(4).Infof("delete response of reservation %s is %s", reservationUUID, deleteResponse)
 	if getRevErr != nil {
-		return "", fmt.Errorf("Error getting reservations destinations: %s", err)
+		return nil, fmt.Errorf("Error getting reservations destinations: %s", err)
 	}
-	/*
-		containerToSlaveMap, err := parseGetReservationResponse(containerName, getResponse)
-		if err != nil {
-			return nil, fmt.Errorf("Error parsing reservation destination returned from VMTurbo server: %s", err)
-		}*/
-	dest, err := GetTaskReservationDestination(getResponse)
+
 	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
-	fmt.Println("The full Url is ", fullUrl)
+	glog.V(4).Infof("The full Url is %s \n", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
-	fmt.Println(req)
+	glog.V(3).Infof("GET request is :  %+v\n", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
+	glog.V(3).Infof("---> reply from placement: %+v ", resp)
+	// TODO turn repMap into a map of task name-> dest id
 	respMap, err := util.CreateSlaveIpIdMap(resp)
+	destinationMap := make(map[string]string)
+	for j, ip := range dest {
+		taskName := pending[j].Name
+		destinationMap[taskName] = respMap[ip]
+	}
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	fmt.Println("Get Succeed: %v", respMap)
+	glog.V(3).Infof("Get request for placement Succeeded: %v \n", respMap)
 	defer resp.Body.Close()
 
 	if err != nil {
-		fmt.Println("error line 342 vmtapi")
+		glog.V(3).Infof("Error: %s\n", err)
 	}
-	fmt.Printf("destination is: %s", dest)
-	return respMap[dest], nil
+	glog.V(3).Infof("Destination is: %s \n", dest)
+	return destinationMap, nil
 }
 
 // TODO change
@@ -417,19 +430,30 @@ func decodeReservationResponse(content string) (*ServiceEntities, error) {
 	return se, nil
 }
 
-func GetTaskReservationDestination(content string) (string, error) {
+func GetTaskReservationDestination(content string) ([]string, error) {
 	se, err := decodeReservationResponse(content)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	if se.ActionItems[0].VM == "" {
-		return "", fmt.Errorf("Reservation destination get from VMT server is null.")
-	}
+	/*	if se.ActionItems[0].VM == "" {
+			return "", fmt.Errorf("Reservation destination get from VMT server is null.")
+		}
 
-	// Now only support a single reservation each time.
-	return se.ActionItems[0].VM, nil
+		// Now only support a single reservation each time.
+		return se.ActionItems[0].VM, nil
+	*/
+	var actionItems []string
+	for i := range se.ActionItems {
+		if se.ActionItems[i].VM == "" {
+			return nil, fmt.Errorf("Reservation destination get from VMT server is null.")
+		} else {
+			actionItems = append(actionItems, se.ActionItems[i].VM)
+		}
+	}
+	return actionItems, nil
 }
 
+/*
 // this method takes in a http get response for reservation and should return the reservation uuid, if there is any
 func parseGetReservationResponse(podName, content string) (map[string]string, error) {
 	if content == "" {
@@ -446,6 +470,7 @@ func parseGetReservationResponse(podName, content string) (map[string]string, er
 	pod2NodeMap[podName] = dest
 	return pod2NodeMap, nil
 }
+*/
 
 func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 	return &VmtApi{
@@ -461,32 +486,56 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 		time.Sleep(time.Second * 5)
 		pending, err := action.RequestPendingTasks(client)
 		if err != nil {
-			fmt.Printf("error %s \n", err)
+			glog.V(3).Infof("error %s \n", err)
 		}
 
+		var pendingUUIDs string
+		for i, task := range pending {
+			templateUUID := getTemplateSize(task)
+			if i < len(pending)-1 {
+				pendingUUIDs = pendingUUIDs + templateUUID + "&templateUuids[]="
+			} else {
+				pendingUUIDs = pendingUUIDs + templateUUID
+			}
+		}
 		if len(pending) > 0 {
 			var taskDestinationMap = make(map[string]string)
 			var newreservation *Reservation
+			newreservation = &Reservation{
+				Meta: mesosmetadata,
+			}
+			taskDestinationMap, err = newreservation.GetVMTReservation(pendingUUIDs, pending)
+			//TODO is result == "" it's a timeout???
+			if err != nil {
+				glog.V(3).Infof("Pending task is not getting placement, still pending.\n")
+				continue
+			}
+
 			for i := range pending {
-				fmt.Printf("pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
-				newreservation = &Reservation{
-					Meta: mesosmetadata,
-				}
+				glog.V(3).Infof("Pendingtasks are name:  %s and Id : %s \n", pending[i].Name, pending[i].Id)
+				/*		newreservation = &Reservation{
+							Meta: mesosmetadata,
+						}
+						taskDestinationMap[name], err = newreservation.GetVMTReservation(pending[i])
+						//TODO is result == "" it's a timeout???
+						if err != nil {
+							glog.V(3).Infof("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
+							continue
+						}*/
+				// assign Tasks if we got a placement
 				name := pending[i].Name
-				taskDestinationMap[name], err = newreservation.GetVMTReservation(pending[i])
-				if err != nil {
-					fmt.Printf("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
+				client.Action = "AssignTasks"
+				var ok bool
+				if client.DestinationId, ok = taskDestinationMap[name]; !ok {
+					glog.V(3).Infof("Pending task %s is not getting placement, still pending.\n", name)
 					continue
 				}
-				// assign Tasks if we got a placement
-				client.Action = "AssignTasks"
-				client.DestinationId = taskDestinationMap[name]
 				client.TaskId = pending[i].Id
 				res, err := action.RequestMesosAction(client)
 				if err != nil {
-					fmt.Printf("error %s \n", err)
+					glog.V(4).Infof("error %s \n", err)
 				}
-				fmt.Printf("result is : %s \n", res)
+				glog.V(3).Infof("Result after LayerX placement is : %s \n", res)
 			}
 		}
 	}
