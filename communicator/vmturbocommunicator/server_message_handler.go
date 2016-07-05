@@ -616,9 +616,12 @@ func generateReconcilationMetaData() *sdk.EntityDTO_ReplacementEntityMetaData {
 	replacementEntityMetaDataBuilder.Matching("IP")
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CPU_ALLOCATION)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_MEM_ALLOCATION)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_STORAGE_ALLOCATION)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CLUSTER)	
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VCPU)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VMEM)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_APPLICATION)
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VMPM_ACCESS)
 	metaData := replacementEntityMetaDataBuilder.Build()
 	return metaData
 }
