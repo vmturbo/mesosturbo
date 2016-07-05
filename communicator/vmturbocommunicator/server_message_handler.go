@@ -360,7 +360,8 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
-			CPUs: float64(0),
+			CPUs: float64(0.0),
+			Mem: float64(0.0),
 		}
 		for j := range arrOfExec {
 			executor := arrOfExec[j]
@@ -416,6 +417,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 				// Sum the used CPU in MHz for each slave
 				mapSlaveUse[s.Id].CPUs = usedCPU + mapSlaveUse[s.Id].CPUs
+				// Mem is returned in B convert to KB
+				// usedRes is reply from statistics.json
+				usedMem_B := executor.Statistics.MemRSSBytes
+				usedMem_KB := usedMem_B/ float64(1024.0)	
+				mapSlaveUse[s.Id].Mem = mapSlaveUse[s.Id].Mem + usedMem_KB
 			}
 		} // task loop
 	} // slave loop

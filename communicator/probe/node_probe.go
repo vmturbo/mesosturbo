@@ -58,7 +58,7 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave, useMap ma
 
 	// Find out the used value for each commodity
 	cpuUsed := useMap[slaveInfo.Id].CPUs
-	memUsed := slaveInfo.UsedResources.Mem
+	memUsed := useMap[slaveInfo.Id].Mem
 	diskUsed := slaveInfo.UsedResources.Disk
 	glog.V(4).Infof("Discovered node is %f\n", slaveInfo.Id)
 	glog.V(4).Infof("=======> Node CPU used is %f \n", cpuUsed)
