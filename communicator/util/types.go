@@ -2,6 +2,12 @@ package util
 
 import "time"
 
+type Attributes struct {
+	Rack string `json:"rack"`
+	Zone string `json:"zone"`
+	Foo  string `json:"foop"`
+}
+
 type Resources struct {
 	Disk float64 `json:"disk"`
 	Mem  float64 `json:"mem"`
@@ -39,6 +45,7 @@ type Slave struct {
 	OfferedResources Resources `json:"offered_resources"`
 	Name             string    `json:"hostname"`
 	Calculated       CalculatedUse
+	Attributes       Attributes `json:"attributes"`
 }
 
 type MesosAPIResponse struct {
