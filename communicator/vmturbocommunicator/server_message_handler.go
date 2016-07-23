@@ -328,6 +328,30 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	glog.V(4).Infof("tasks response is %+v \n", resp.Body)
 	defer resp.Body.Close()
 
+	//Marathon
+	fullUrlM := "http://" + handler.meta.MesosActionIP + ":8080" + "/v2/apps"
+	glog.V(4).Infof("The full Url is ", fullUrlM)
+	reqM, err := http.NewRequest("GET", fullUrlM, nil)
+
+	glog.V(4).Infof("%+v", reqM)
+	clientM := &http.Client{}
+	respM, err := clientM.Do(reqM)
+	if err != nil {
+		glog.Errorf("Error getting response: %s", err)
+		return nil, err
+	}
+	marathonRespContent, err := parseMarathonResponse(respM)
+
+	if err != nil {
+		glog.Errorf("Error getting response: %s", err)
+		return nil, err
+	}
+
+	glog.V(3).Infof("Marathon Get Succeed: %v\n", marathonRespContent)
+	defer resp.Body.Close()
+
+	respContent.MApps = marathonRespContent
+
 	// STATS
 	var mapTaskRes map[string]util.Statistics
 	mapTaskRes = make(map[string]util.Statistics)
@@ -361,7 +385,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		arrOfExec = *usedRes
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
 			CPUs: float64(0.0),
-			Mem: float64(0.0),
+			Mem:  float64(0.0),
 		}
 		for j := range arrOfExec {
 			executor := arrOfExec[j]
@@ -420,7 +444,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 				// Mem is returned in B convert to KB
 				// usedRes is reply from statistics.json
 				usedMem_B := executor.Statistics.MemRSSBytes
-				usedMem_KB := usedMem_B/ float64(1024.0)	
+				usedMem_KB := usedMem_B / float64(1024.0)
 				mapSlaveUse[s.Id].Mem = mapSlaveUse[s.Id].Mem + usedMem_KB
 			}
 		} // task loop
@@ -463,7 +487,13 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedUse) ([]*sdk.EntityDTO, error) {
 	result := []*sdk.EntityDTO{}
 	taskList := m.TaskMasterAPI.Tasks
+
+	builder := &probe.TaskBuilder{
+	// map
+	}
+	builder.BuildConstraintMap(m.MApps.Apps)
 	for i := range taskList {
+		glog.V(3).Infof("entire Task ====================> %+v", taskList[i])
 		if _, ok := taskUseMap[taskList[i].Id]; !ok {
 			continue
 		}
@@ -477,6 +507,7 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 		}
 		glog.V(4).Infof("=====> task is %s and state %s\n", taskProbe.Task.Name, taskProbe.Task.State)
 
+		builder.SetTaskConstraints(taskProbe)
 		//ipAddress := slaveIdIpMap[taskProbe.Task.SlaveId]
 		//usedResources := taskProbe.GetUsedResourcesForTask(ipAddress)
 		taskResource, err := taskProbe.GetTaskResourceStat(m.MapTaskStatistics, taskProbe.Task, taskUseMap)
@@ -521,6 +552,34 @@ func parseAPITasksResponse(resp *util.MesosAPIResponse) (*util.MasterTasks, erro
 		Tasks: allTasks,
 	}
 	return tasksObj, nil
+}
+
+func parseMarathonResponse(resp *http.Response) (*util.MarathonApps, error) {
+	glog.V(4).Infof("----> in parseAPICallResponse")
+	if resp == nil {
+		return nil, fmt.Errorf("response sent in is nil")
+	}
+	glog.V(3).Infof(" from glog response body is %s", resp.Body)
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		glog.Errorf("Error after ioutil.ReadAll: %s", err)
+		return nil, err
+	}
+
+	glog.V(4).Infof("response content is %s", string(content))
+	byteContent := []byte(content)
+	var jsonMarathonMaster = new(util.MarathonApps)
+	err = json.Unmarshal(byteContent, &jsonMarathonMaster)
+	if err != nil {
+		glog.Errorf("error in json unmarshal : %s", err)
+	}
+	for i, app := range jsonMarathonMaster.Apps {
+		newN := app.Name[1:len(app.Name)]
+		jsonMarathonMaster.Apps[i].Name = newN
+	}
+	glog.V(3).Infof(" MARATHON resp %+v", jsonMarathonMaster)
+	return jsonMarathonMaster, nil
 }
 
 func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) {
@@ -623,7 +682,7 @@ func generateReconcilationMetaData() *sdk.EntityDTO_ReplacementEntityMetaData {
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CPU_ALLOCATION)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_MEM_ALLOCATION)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_STORAGE_ALLOCATION)
-	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CLUSTER)	
+	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_CLUSTER)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VCPU)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_VMEM)
 	replacementEntityMetaDataBuilder.PatchSelling(sdk.CommodityDTO_APPLICATION)

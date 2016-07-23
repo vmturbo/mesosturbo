@@ -49,6 +49,7 @@ type Slave struct {
 }
 
 type MesosAPIResponse struct {
+	MApps             *MarathonApps
 	Version           string      `json:"version"`
 	Id                string      `json:"id"`
 	ActivatedSlaves   float64     `json:"activated_slaves"`
@@ -64,14 +65,14 @@ type MesosAPIResponse struct {
 	// TODO use this?
 	MapSlaveToTasks map[string][]Task
 	//cluster
-	Cluster ClusterInfo
-	ClusterName	  string       `json:"cluster"`
+	Cluster     ClusterInfo
+	ClusterName string `json:"cluster"`
 }
 
 type ClusterInfo struct {
 	ClusterName string
-	MasterIP string
-	MasterId string
+	MasterIP    string
+	MasterId    string
 }
 
 type ContDocker struct {
@@ -115,17 +116,24 @@ type Status struct {
 	//	Timestamp `json:"timestamp"`
 }
 
+type Label struct {
+	//	Key   string `json:"key"`
+	//	Value string `json:"value"`
+	State string `json:"key"`
+}
+
 type Task struct {
 	Container   Container `json:"container"`
 	Discovery   Discovery `json:"discovery"`
 	ExecutorId  string    `json:"executor_id"`
 	FrameworkId string    `json:"framework_id"`
 	Id          string    `json:"id"`
+	Labels      []Label   `json:"labels"`
+	Name        string    `json:"name"`
 	Resources   Resources `json:"resources"`
 	SlaveId     string    `json:"slave_id"`
-	Name        string    `json:"name"`
-	Statuses    []Status  `json:"statuses"`
 	State       string    `json:"state"`
+	Statuses    []Status  `json:"statuses"`
 }
 
 type Framework struct {
@@ -141,4 +149,13 @@ type Framework struct {
 
 type MasterTasks struct {
 	Tasks []Task `json:"tasks"`
+}
+
+type App struct {
+	Name        string     `json:"id"`
+	Constraints [][]string `json:"constraints"`
+}
+
+type MarathonApps struct {
+	Apps []App `json:"apps"`
 }

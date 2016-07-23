@@ -442,6 +442,7 @@ func decodeReservationResponse(content string) (*ServiceEntities, error) {
 }
 
 func GetTaskReservationDestination(content string) ([]string, error) {
+	var err error
 	se, err := decodeReservationResponse(content)
 	if err != nil {
 		return nil, err
@@ -456,6 +457,7 @@ func GetTaskReservationDestination(content string) ([]string, error) {
 	var actionItems []string
 	var errFound bool
 	errFound = false
+
 	for i := range se.ActionItems {
 		if se.ActionItems[i].VM == "" {
 			errFound = true
@@ -464,10 +466,10 @@ func GetTaskReservationDestination(content string) ([]string, error) {
 			actionItems = append(actionItems, se.ActionItems[i].VM)
 		}
 	}
-	if errfound {
-		err := fmt.Errorf("Reservation destination get from VMT server is null.")
+	if errFound {
+		err = fmt.Errorf("Reservation destination get from VMT server is null.")
 	} else {
-		err := nil
+		err = nil
 	}
 	return actionItems, err
 }

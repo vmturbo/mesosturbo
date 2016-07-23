@@ -18,8 +18,10 @@ type TaskResourceStat struct {
 // models the probe for a mesos master state , containing metadata about
 // all of the slaves
 type TaskProbe struct {
-	Task    *util.Task
-	Cluster *util.ClusterInfo
+	Task           *util.Task
+	Cluster        *util.ClusterInfo
+	Constraints    [][]string
+	ConstraintsMap map[string][][]string
 }
 
 // Get current stat of node resources, such as capacity and used values.
@@ -102,12 +104,20 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		Key(taskProbe.Cluster.ClusterName).
 		Create()
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
-	vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
-		Key(taskProbe.Cluster.ClusterName).
-		Create()
-	commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
-
-	// TODO vmpm  access commodity
+	glog.V(3).Infof("========> size %d and labels  %+v", len(taskProbe.Task.Labels), taskProbe.Task.Labels)
+	// this is only for constraint type CLUSTER
+	for _, c := range taskProbe.Constraints {
+		if c[1] == "CLUSTER" {
+			key := c[0]
+			val := c[2]
+			glog.V(3).Infof("========> key %s and value  ", key)
+			vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
+				Key(key + ":" + val).
+				Create()
+			commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
+		}
+	}
+	// TODO other constraint operator types
 	return commoditiesBought
 }
 
@@ -172,3 +182,10 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	commoditiesBoughtMap[slaveProvider] = commoditiesBoughtFromSlave
 	return commoditiesBoughtMap
 }
+
+/*
+func (TaskProbe *TaskProbe) buildConstraintMap() map[string][][]Strin{
+	for i, cons := range taskProbe.Constraints{
+		this.ConstraintsMap[]
+}
+*/
