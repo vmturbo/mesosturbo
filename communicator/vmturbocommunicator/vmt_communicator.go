@@ -60,7 +60,7 @@ func (vmtcomm *VMTCommunicator) RegisterMesos() {
 	glog.V(3).Infof("Supply chain for Mesos is created.")
 
 	// 3. construct the mesos ,  mesosProbe is the only probe supported.
-	probeType := "Mesos" //vmtcomm.meta.TargetType
+	probeType := vmtcomm.meta.TargetType
 	probeCat := "Container"
 	mesosProbe := comm.NewProbeInfoBuilder(probeType, probeCat, templateDtos, acctDefProps).Create()
 
@@ -72,7 +72,7 @@ func (vmtcomm *VMTCommunicator) RegisterMesos() {
 	containerInfo := &comm.ContainerInfo{
 		Probes: probes,
 	}
-	glog.V(3).Infof("Send registration message: %+v", containerInfo)
+	glog.V(3).Infof("----> Sending registration message: %+v\n\n", containerInfo)
 	vmtcomm.wsComm.RegisterAndListen(containerInfo)
 }
 
