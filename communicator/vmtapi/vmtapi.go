@@ -212,13 +212,13 @@ func parseAPICallResponse(resp *http.Response) (string, error) {
 
 func (r *Reservation) GetVMTReservation(uuidString string, pending []*action.PendingTask) (map[string]string, error) {
 	taskSpec := GetRequestTaskSpec(uuidString)
-	reservationResult, err := r.RequestPlacement(pending, taskSpec, nil)
-	glog.V(3).Infof("the destination map is %+v", reservationResult)
+	reservationResults, err := r.RequestPlacement(pending, taskSpec, nil)
+	glog.V(3).Infof("the destination map is %+v", reservationResults)
 	if err != nil {
-		glog.V(3).Infof("error in get Reservation line 214  %s\n", err)
+		glog.V(3).Infof("error in one of the Reservations  %s\n", err)
 		return nil, err
 	}
-	return reservationResult, nil
+	return reservationResults, nil
 }
 
 // TODO for SDK
@@ -255,6 +255,7 @@ func GetRequestTaskSpec(uuidString string) map[string]string {
 	// TODO this name is not supposed to be hardcoded , same for Kubeturbo
 	requestMap["reservation_name"] = "MesosReservation"
 	//TODO: this should not be hardcoded.
+	// check if num_instances will be used
 	requestMap["num_instances"] = "1"
 	requestMap["template_name"] = uuidString
 	requestMap["templateUuids[]"] = uuidString
@@ -330,6 +331,7 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 	reservationUUID, err := vmturboApi.Post("/reservations", parameterString)
 	if err != nil {
 		glog.V(4).Infof("Error posting reservations %s \n", err)
+		// TODO should there be a default placement?? relay to mesos
 		return nil, fmt.Errorf("Error posting reservations: %s", err)
 	}
 	reservationUUID = strings.Replace(reservationUUID, "\n", "", -1)
@@ -337,22 +339,25 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 
 	var getResponse string
 	var getRevErr error
-	var dest []string
+	var destVMs []string
 	// TODO, do we want to wait for a predefined time or send send API requests multiple times.
 	for counter := 0; counter < 10; counter++ {
 		time.Sleep(2 * time.Second)
-		glog.V(3).Infof("reserve UUID  %s \n", reservationUUID)
+		glog.V(3).Infof("Attempt #%d : reserve UUID  %s \n", counter+1, reservationUUID)
 		getResponse, getRevErr = vmturboApi.Get("/reservations/" + reservationUUID)
-		dest, err = GetTaskReservationDestination(getResponse)
+		destVMs, err = GetTaskReservationDestination(getResponse)
 		if err != nil {
+			// TODO handle the one task that didn't get placement, all others ok
 			fmt.Errorf("Error getting reservations destinations: %s \n", err)
 		}
-		if dest != nil {
+		// array of VMs to place tasks on
+		if destVMs != nil {
 			glog.V(3).Infof("Got a reservation destination! \n")
 			break
 		}
 	}
 	// After trying to get or getting the destination, delete the reservation.
+	// Check , does this delete multiple reservations ???
 	deleteResponse, err := vmturboApi.Delete("/reservations/" + reservationUUID)
 	if err != nil {
 		// TODO, Should we return without placement?
@@ -363,6 +368,7 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 		return nil, fmt.Errorf("Error getting reservations destinations: %s", err)
 	}
 
+	// generate map of VM IPs
 	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
 	glog.V(4).Infof("The full Url is %s \n", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
@@ -372,24 +378,29 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 	}
-	glog.V(3).Infof("---> reply from placement: %+v ", resp)
-	// TODO turn repMap into a map of task name-> dest id
+
+	// Create map of IP to Slave MesosID
 	respMap, err := util.CreateSlaveIpIdMap(resp)
-	destinationMap := make(map[string]string)
-	for j, ip := range dest {
-		taskName := pending[j].Name
-		destinationMap[taskName] = respMap[ip]
-	}
 	if err != nil {
-		glog.Errorf("Error getting response: %s", err)
+		glog.Errorf("Error parsing response into map: %s", err)
+		// TODO return or try again ???
 	}
-	glog.V(3).Infof("Get request for placement Succeeded: %v \n", respMap)
+	// Use map to create a map of taskname to placement destination VM MesosID
+	destinationMap := make(map[string]string)
+	for j, ip := range destVMs {
+		if ip == "no_VM" {
+			// do nothing about this, next pending task list will take care
+		} else {
+			taskName := pending[j].Name
+			destinationMap[taskName] = respMap[ip]
+
+		}
+	}
+
+	glog.V(3).Infof("IP:ID map is %v \n", respMap)
 	defer resp.Body.Close()
 
-	if err != nil {
-		glog.V(3).Infof("Error: %s\n", err)
-	}
-	glog.V(3).Infof("Destination is: %s \n", dest)
+	glog.V(3).Infof("Task - Destination map is : %+v \n", destinationMap)
 	return destinationMap, nil
 }
 
@@ -431,6 +442,7 @@ func decodeReservationResponse(content string) (*ServiceEntities, error) {
 }
 
 func GetTaskReservationDestination(content string) ([]string, error) {
+	var err error
 	se, err := decodeReservationResponse(content)
 	if err != nil {
 		return nil, err
@@ -443,14 +455,23 @@ func GetTaskReservationDestination(content string) ([]string, error) {
 		return se.ActionItems[0].VM, nil
 	*/
 	var actionItems []string
+	var errFound bool
+	errFound = false
+
 	for i := range se.ActionItems {
 		if se.ActionItems[i].VM == "" {
-			return nil, fmt.Errorf("Reservation destination get from VMT server is null.")
+			errFound = true
+			actionItems = append(actionItems, "no_VM")
 		} else {
 			actionItems = append(actionItems, se.ActionItems[i].VM)
 		}
 	}
-	return actionItems, nil
+	if errFound {
+		err = fmt.Errorf("Reservation destination get from VMT server is null.")
+	} else {
+		err = nil
+	}
+	return actionItems, err
 }
 
 /*
@@ -483,14 +504,16 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 // Creates VMT reservation and placement request if pending tasks are found
 func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
 	for {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 30)
 		pending, err := action.RequestPendingTasks(client)
 		if err != nil {
 			glog.V(3).Infof("error %s \n", err)
 		}
 
+		// loop through pending tasks
 		var pendingUUIDs string
 		for i, task := range pending {
+			// create template based on size
 			templateUUID := getTemplateSize(task)
 			if i < len(pending)-1 {
 				pendingUUIDs = pendingUUIDs + templateUUID + "&templateUuids[]="
@@ -498,6 +521,8 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 				pendingUUIDs = pendingUUIDs + templateUUID
 			}
 		}
+
+		// if there are any pending tasks start reservation process
 		if len(pending) > 0 {
 			var taskDestinationMap = make(map[string]string)
 			var newreservation *Reservation
@@ -521,13 +546,14 @@ func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) 
 						if err != nil {
 							glog.V(3).Infof("Pending task %s is not getting placement, still pending.\n", pending[i].Name)
 							continue
-						}*/
+						}
+				*/
 				// assign Tasks if we got a placement
 				name := pending[i].Name
 				client.Action = "AssignTasks"
 				var ok bool
 				if client.DestinationId, ok = taskDestinationMap[name]; !ok {
-					glog.V(3).Infof("Pending task %s is not getting placement, still pending.\n", name)
+					glog.V(3).Infof("Pending task %s is not getting placement, will go pack pending.\n", name)
 					continue
 				}
 				client.TaskId = pending[i].Id

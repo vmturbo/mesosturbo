@@ -42,6 +42,10 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 		if mesosClient.Action == "MigrateTasks" {
 			glog.Errorf("Error while migrating tasks \n")
 		}
+		if mesosClient.Action == "AssignTasks" {
+			glog.Errorf("Error while placing pending task through layerx\n")
+		}
+		return "", fmt.Errorf("Layerx did not place or migrate tasks. \n")
 	}
 
 	body, _ := ioutil.ReadAll(resp.Body)

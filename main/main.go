@@ -19,6 +19,7 @@ func init() {
 }
 
 func main() {
+	var actions string
 	glog.Infof("In main :)")
 	metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
 	if err != nil {
@@ -30,7 +31,12 @@ func main() {
 		Action:          "",
 	}
 	fmt.Printf("----> metadata is %+v", metadata)
-	go api.CreateWatcher(mesosClient, metadata)
+	// Pending Task watcher
+	// TODO flag
+	actions = "disabled"
+	if actions == "enabled" {
+		go api.CreateWatcher(mesosClient, metadata)
+	}
 	clientMap := make(map[string]string)
 	comm := vmturbocommunicator.NewVMTCommunicator(clientMap, metadata)
 	comm.Run()
