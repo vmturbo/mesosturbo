@@ -1,10 +1,8 @@
 {
-	"id": "mesosturboapp",
-	"cmd": "mesosturbo --v=3 --mesos-master-ip=10.10.174.91 --server-ip=192.168.1.112 --target-type=mesos",
-	"mem": 512,
-    	"cpus": 1.0,
-        "instances": 1,
-        "uris": [
-	        "https://github.com/pamelasanchezvi/pammesosturbo/tree/master/application/mesosturbo"
-	]
+	  "id": "mesosturbo-app",
+	  "cmd": "chmod 777 mesosturbo; ./mesosturbo --v=3 --mesos-master-ip=10.10.174.91 --server-ip=192.168.1.112 --target-type=mesos —local-address=10.10.174.91 --vmt-port=8080",
+	  "cpus": 0.2,
+          "mem": 20.0,
+          "instances": 1,
+	  "fetch":[{"uri": "http://www.columbia.edu/~pas2171/programs/mesosturbo"}]
 }
