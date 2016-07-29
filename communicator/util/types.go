@@ -59,6 +59,7 @@ type MesosAPIResponse struct {
 	TaskMasterAPI     MasterTasks
 	SlaveIdIpMap      map[string]string
 	MapTaskStatistics map[string]Statistics
+	Leader            string `json:"leader"`
 	//Monitor
 	TimeSinceLastDisc *time.Time
 	SlaveUseMap       map[string]*CalculatedUse

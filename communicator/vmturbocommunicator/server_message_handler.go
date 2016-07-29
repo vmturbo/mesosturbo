@@ -99,10 +99,15 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	// 2. Build discoverResponse
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
+	if err.Error() == "update leader" {
+		mesosProbe, err = handler.NewMesosProbe(handler.taskUseMap)
+	}
+
 	if err != nil {
 		glog.Errorf("Error getting state from master : %s", err)
 		return
 	}
+
 	nodeEntityDtos, err := ParseNode(mesosProbe, handler.slaveUseMap)
 	if err != nil {
 		// TODO, should here still send out msg to server?
@@ -270,7 +275,18 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	respContent, err := parseAPIStateResponse(resp)
+
+	currentLeader := respContent.Leader
+	respContent.Leader = currentLeader[7 : len(currentLeader)-6]
+
+	if respContent.Leader != handler.meta.MesosActionIP {
+		// not good, update leader
+		return nil, fmt.Errorf("update leader")
+	}
+
 	if respContent.SlaveIdIpMap == nil {
 		respContent.SlaveIdIpMap = make(map[string]string)
 	}
@@ -288,7 +304,6 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		return nil, err
 	}
 	glog.V(3).Infof("Get Succeed: %v\n", respContent)
-	defer resp.Body.Close()
 
 	if respContent.Frameworks == nil {
 		glog.Errorf("Error getting Frameworks response: %s", err)

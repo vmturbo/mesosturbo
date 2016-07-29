@@ -15,11 +15,13 @@ var mesos_master_ip string
 var target_type string
 var local_address string
 var vmt_server_port string
+var display_name string
 
 func init() {
 	goflag.Set("logtostderr", "true")
+	goflag.StringVar(&display_name, "display-name", "mesos_default", "display name")
 	goflag.StringVar(&vmt_server_ip, "server-ip", "", "vmt server ip")
-	goflag.StringVar(&vmt_server_port, "vmt-port", "", "vmt port")
+	goflag.StringVar(&vmt_server_port, "vmt-port", "8080", "vmt port, default 8080")
 	goflag.StringVar(&mesos_master_ip, "mesos-master-ip", "", "mesos master ip")
 	goflag.StringVar(&target_type, "target-type", "", "target type")
 	goflag.StringVar(&local_address, "local-address", "", "local address")
@@ -32,14 +34,14 @@ func main() {
 	var actions string
 
 	fmt.Printf("In main :)")
-	fmt.Printf(" server: %s, master : %s \n", vmt_server_ip, mesos_master_ip)
+	fmt.Printf(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
 	metadata := &metadata.VMTMeta{
 		MesosActionIP:      mesos_master_ip,
 		MesosActionPort:    "5555",
 		ServerAddress:      vmt_server_ip + ":" + vmt_server_port,
 		TargetType:         target_type,
-		NameOrAddress:      "mesos1",
+		NameOrAddress:      display_name,
 		Username:           "mesos_user",
 		TargetIdentifier:   "mesos1",
 		Password:           "password",
