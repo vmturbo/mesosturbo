@@ -57,7 +57,7 @@ func (handler *MesosServerMessageHandler) DiscoverTarget() {
 
 // If server sends a validation request, validate the request.
 // TODO Validate all the request. aka, no matter what usr/passwd is provided, always pass validation.
-// The correct bahavior is to set ErrorDTO when validation fails.
+// The correct behavior is to set ErrorDTO when validation fails.
 func (handler *MesosServerMessageHandler) Validate(serverMsg *comm.MediationServerMessage) {
 	//Always send Validated for now
 	glog.V(3).Infof("Mesos validation request from Server")
@@ -99,7 +99,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	// 2. Build discoverResponse
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
-	if err.Error() == "update leader" {
+	if err != nil && err.Error() == "update leader" {
 		mesosProbe, err = handler.NewMesosProbe(handler.taskUseMap)
 	}
 
@@ -280,10 +280,15 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	respContent, err := parseAPIStateResponse(resp)
 
 	currentLeader := respContent.Leader
-	respContent.Leader = currentLeader[7 : len(currentLeader)-6]
+	respContent.Leader = currentLeader[7 : len(currentLeader)-5]
 
+	fmt.Printf("respContent.Leader is ----->%s", respContent.Leader)
+	fmt.Printf("handler.meta.MesosActionOP    %s", handler.meta.MesosActionIP)
 	if respContent.Leader != handler.meta.MesosActionIP {
 		// not good, update leader
+		handler.meta.MesosActionIP = respContent.Leader
+		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosActionIP)
+		fmt.Println("----> UPDATE LEADER")
 		return nil, fmt.Errorf("update leader")
 	}
 
