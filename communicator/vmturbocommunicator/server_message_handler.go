@@ -403,18 +403,25 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		}
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
+
+		// TODO create port array
+
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
-			CPUs: float64(0.0),
-			Mem:  float64(0.0),
+			CPUs:      float64(0.0),
+			Mem:       float64(0.0),
+			UsedPorts: s.UsedResources.Ports,
 		}
+
 		for j := range arrOfExec {
 			executor := arrOfExec[j]
 			// TODO check if this is taskId
 			taskId := executor.Source
 			mapTaskRes[taskId] = executor.Statistics
+
 			// TASK MONITOR
 			if _, ok := mapTaskUse[taskId]; !ok {
 				var prevSecs float64
+
 				// CPU use CALCULATION STARTS
 
 				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs

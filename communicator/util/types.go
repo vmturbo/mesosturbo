@@ -9,9 +9,10 @@ type Attributes struct {
 }
 
 type Resources struct {
-	Disk float64 `json:"disk"`
-	Mem  float64 `json:"mem"`
-	CPUs float64 `json:"cpus"`
+	Disk  float64 `json:"disk"`
+	Mem   float64 `json:"mem"`
+	CPUs  float64 `json:"cpus"`
+	Ports string  `json:"ports"`
 }
 
 type CalculatedUse struct {
@@ -19,6 +20,7 @@ type CalculatedUse struct {
 	Mem                  float64
 	CPUs                 float64
 	CPUsumSystemUserSecs float64
+	UsedPorts            string
 }
 
 type Statistics struct {
@@ -137,6 +139,7 @@ type Task struct {
 	Statuses    []Status  `json:"statuses"`
 }
 
+// assumed to be framework from slave , not from master state
 type Framework struct {
 	Id        string    `json:"id"`
 	Name      string    `json:"name"`
