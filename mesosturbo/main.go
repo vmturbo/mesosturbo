@@ -16,6 +16,7 @@ var target_type string
 var local_address string
 var vmt_server_port string
 var display_name string
+var marathon_master string
 
 func init() {
 	goflag.Set("logtostderr", "true")
@@ -25,6 +26,7 @@ func init() {
 	goflag.StringVar(&mesos_master_ip, "mesos-master-ip", "", "mesos master ip")
 	goflag.StringVar(&target_type, "target-type", "", "target type")
 	goflag.StringVar(&local_address, "local-address", "", "local address")
+	goflag.StringVar(&marathon_master, "marathon-master", "", "ip of master that runs marathon ")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
 }
@@ -37,6 +39,7 @@ func main() {
 	fmt.Printf(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
 	metadata := &metadata.VMTMeta{
+		MesosMarathonIP:    marathon_master,
 		MesosActionIP:      mesos_master_ip,
 		MesosActionPort:    "5555",
 		ServerAddress:      vmt_server_ip + ":" + vmt_server_port,

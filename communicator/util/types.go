@@ -78,11 +78,18 @@ type ClusterInfo struct {
 	MasterId    string
 }
 
+type PortMapping struct {
+	ContainerPort int `json:"containerPort"`
+	HostPort      int `json:"hostPort"`
+	ServicePort   int `json:"servicePort"`
+}
+
 type ContDocker struct {
-	ForcePullImage bool   `json:"force_pull_image"`
-	Image          string `json:"image"`
-	Network        string `json:"network"`
-	Privileged     bool   `json:"privileged"`
+	ForcePullImage bool          `json:"force_pull_image"`
+	Image          string        `json:"image"`
+	Network        string        `json:"network"`
+	Privileged     bool          `json:"privileged"`
+	PortMappings   []PortMapping `json:"portMappings"`
 }
 
 type Container struct {
@@ -156,8 +163,10 @@ type MasterTasks struct {
 }
 
 type App struct {
-	Name        string     `json:"id"`
-	Constraints [][]string `json:"constraints"`
+	Name         string     `json:"id"`
+	Constraints  [][]string `json:"constraints"`
+	RequirePorts bool       `json:"requirePorts"`
+	Container    Container  `json:"container"`
 }
 
 type MarathonApps struct {

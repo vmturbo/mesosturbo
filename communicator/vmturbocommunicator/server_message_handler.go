@@ -349,7 +349,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	defer resp.Body.Close()
 
 	//Marathon
-	fullUrlM := "http://" + handler.meta.MesosActionIP + ":8080" + "/v2/apps"
+	fullUrlM := "http://" + handler.meta.MesosMarathonIP + ":8080" + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
