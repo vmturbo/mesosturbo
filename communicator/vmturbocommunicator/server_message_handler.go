@@ -57,7 +57,7 @@ func (handler *MesosServerMessageHandler) DiscoverTarget() {
 
 // If server sends a validation request, validate the request.
 // TODO Validate all the request. aka, no matter what usr/passwd is provided, always pass validation.
-// The correct bahavior is to set ErrorDTO when validation fails.
+// The correct behavior is to set ErrorDTO when validation fails.
 func (handler *MesosServerMessageHandler) Validate(serverMsg *comm.MediationServerMessage) {
 	//Always send Validated for now
 	glog.V(3).Infof("Mesos validation request from Server")
@@ -99,10 +99,15 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	// 2. Build discoverResponse
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
+	if err != nil && err.Error() == "update leader" {
+		mesosProbe, err = handler.NewMesosProbe(handler.taskUseMap)
+	}
+
 	if err != nil {
 		glog.Errorf("Error getting state from master : %s", err)
 		return
 	}
+
 	nodeEntityDtos, err := ParseNode(mesosProbe, handler.slaveUseMap)
 	if err != nil {
 		// TODO, should here still send out msg to server?
@@ -270,7 +275,23 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	respContent, err := parseAPIStateResponse(resp)
+
+	currentLeader := respContent.Leader
+	respContent.Leader = currentLeader[7 : len(currentLeader)-5]
+
+	fmt.Printf("respContent.Leader is ----->%s", respContent.Leader)
+	fmt.Printf("handler.meta.MesosActionOP    %s", handler.meta.MesosActionIP)
+	if respContent.Leader != handler.meta.MesosActionIP {
+		// not good, update leader
+		handler.meta.MesosActionIP = respContent.Leader
+		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosActionIP)
+		fmt.Println("----> UPDATE LEADER")
+		return nil, fmt.Errorf("update leader")
+	}
+
 	if respContent.SlaveIdIpMap == nil {
 		respContent.SlaveIdIpMap = make(map[string]string)
 	}
@@ -288,7 +309,6 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		return nil, err
 	}
 	glog.V(3).Infof("Get Succeed: %v\n", respContent)
-	defer resp.Body.Close()
 
 	if respContent.Frameworks == nil {
 		glog.Errorf("Error getting Frameworks response: %s", err)
@@ -329,7 +349,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	defer resp.Body.Close()
 
 	//Marathon
-	fullUrlM := "http://" + handler.meta.MesosActionIP + ":8080" + "/v2/apps"
+	fullUrlM := "http://" + handler.meta.MesosMarathonIP + ":8080" + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
@@ -383,18 +403,25 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		}
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
+
+		// TODO create port array
+
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
-			CPUs: float64(0.0),
-			Mem:  float64(0.0),
+			CPUs:      float64(0.0),
+			Mem:       float64(0.0),
+			UsedPorts: s.UsedResources.Ports,
 		}
+
 		for j := range arrOfExec {
 			executor := arrOfExec[j]
 			// TODO check if this is taskId
 			taskId := executor.Source
 			mapTaskRes[taskId] = executor.Statistics
+
 			// TASK MONITOR
 			if _, ok := mapTaskUse[taskId]; !ok {
 				var prevSecs float64
+
 				// CPU use CALCULATION STARTS
 
 				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
@@ -608,7 +635,7 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 func buildTaskAppEntityDTO(slaveIdIp map[string]string, task *util.Task, commoditiesSold []*sdk.CommodityDTO, commoditiesBoughtMap map[*sdk.ProviderDTO][]*sdk.CommodityDTO) *sdk.EntityDTO {
 	appEntityType := sdk.EntityDTO_APPLICATION
 	id := task.Name + "::" + "APP:" + task.Id
-	dispName := "APP:" + task.Name + "foofoo"
+	dispName := "APP:" + task.Name
 	entityDTOBuilder := sdk.NewEntityDTOBuilder(appEntityType, id+"foo")
 	entityDTOBuilder = entityDTOBuilder.DisplayName(dispName)
 

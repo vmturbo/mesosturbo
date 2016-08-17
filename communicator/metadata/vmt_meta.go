@@ -34,6 +34,7 @@ const (
 )
 
 type VMTMeta struct {
+	MesosMarathonIP    string
 	MesosActionIP      string
 	MesosActionPort    string
 	ServerAddress      string

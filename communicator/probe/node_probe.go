@@ -91,20 +91,20 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 
 	// create labels for VM node
 	var labels = []string{}
-	if(slaveInfo.Attributes.Rack != ""){
+	if slaveInfo.Attributes.Rack != "" {
 		strkey := "rack"
 		strval := slaveInfo.Attributes.Rack
 		glog.V(3).Infof("----------------> zone is %s", strval)
 		labels = append(labels, strkey+":"+strval)
 		glog.V(3).Infof("====================> labels : %+v", labels)
-	}	
-        if(slaveInfo.Attributes.Zone != ""){
-                strkey := "zone"
-                strval := slaveInfo.Attributes.Zone
+	}
+	if slaveInfo.Attributes.Zone != "" {
+		strkey := "zone"
+		strval := slaveInfo.Attributes.Zone
 		glog.V(3).Infof("----------------> zone is %s", strval)
-                labels = append(labels, strkey+":"+strval)
+		labels = append(labels, strkey+":"+strval)
 		glog.V(3).Infof("====================> labels : %+v", labels)
-        }
+	}
 
 	//TODO: create const value for keys
 	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
@@ -145,12 +145,15 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Key(nodeProbe.Cluster.ClusterName).
 		Create()
 	commoditiesSold = append(commoditiesSold, clusterComm)
+
+	// TODO add port commodity sold for now
+	glog.V(2).Infof("----> used ports are: %s", useMap[slaveInfo.Id].UsedPorts)
 	// add labels
-	for _ , label := range labels{
+	for _, label := range labels {
 		vmpmAccessCommBuilder := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS)
 		vmpmAccessCommBuilder = vmpmAccessCommBuilder.Key(label)
 		vmpmAccessComm := vmpmAccessCommBuilder.Create()
-        	commoditiesSold = append(commoditiesSold, vmpmAccessComm)
+		commoditiesSold = append(commoditiesSold, vmpmAccessComm)
 	}
 	return commoditiesSold, nil
 }

@@ -9,9 +9,10 @@ type Attributes struct {
 }
 
 type Resources struct {
-	Disk float64 `json:"disk"`
-	Mem  float64 `json:"mem"`
-	CPUs float64 `json:"cpus"`
+	Disk  float64 `json:"disk"`
+	Mem   float64 `json:"mem"`
+	CPUs  float64 `json:"cpus"`
+	Ports string  `json:"ports"`
 }
 
 type CalculatedUse struct {
@@ -19,6 +20,7 @@ type CalculatedUse struct {
 	Mem                  float64
 	CPUs                 float64
 	CPUsumSystemUserSecs float64
+	UsedPorts            string
 }
 
 type Statistics struct {
@@ -59,6 +61,7 @@ type MesosAPIResponse struct {
 	TaskMasterAPI     MasterTasks
 	SlaveIdIpMap      map[string]string
 	MapTaskStatistics map[string]Statistics
+	Leader            string `json:"leader"`
 	//Monitor
 	TimeSinceLastDisc *time.Time
 	SlaveUseMap       map[string]*CalculatedUse
@@ -75,11 +78,18 @@ type ClusterInfo struct {
 	MasterId    string
 }
 
+type PortMapping struct {
+	ContainerPort int `json:"containerPort"`
+	HostPort      int `json:"hostPort"`
+	ServicePort   int `json:"servicePort"`
+}
+
 type ContDocker struct {
-	ForcePullImage bool   `json:"force_pull_image"`
-	Image          string `json:"image"`
-	Network        string `json:"network"`
-	Privileged     bool   `json:"privileged"`
+	ForcePullImage bool          `json:"force_pull_image"`
+	Image          string        `json:"image"`
+	Network        string        `json:"network"`
+	Privileged     bool          `json:"privileged"`
+	PortMappings   []PortMapping `json:"portMappings"`
 }
 
 type Container struct {
@@ -136,6 +146,7 @@ type Task struct {
 	Statuses    []Status  `json:"statuses"`
 }
 
+// assumed to be framework from slave , not from master state
 type Framework struct {
 	Id        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -152,8 +163,10 @@ type MasterTasks struct {
 }
 
 type App struct {
-	Name        string     `json:"id"`
-	Constraints [][]string `json:"constraints"`
+	Name         string     `json:"id"`
+	Constraints  [][]string `json:"constraints"`
+	RequirePorts bool       `json:"requirePorts"`
+	Container    Container  `json:"container"`
 }
 
 type MarathonApps struct {
