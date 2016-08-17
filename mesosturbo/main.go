@@ -17,16 +17,20 @@ var local_address string
 var vmt_server_port string
 var display_name string
 var marathon_master string
+var opsman_username string
+var opsman_password string
 
 func init() {
 	goflag.Set("logtostderr", "true")
 	goflag.StringVar(&display_name, "display-name", "mesos_default", "display name")
 	goflag.StringVar(&vmt_server_ip, "server-ip", "", "vmt server ip")
-	goflag.StringVar(&vmt_server_port, "vmt-port", "8080", "vmt port, default 8080")
+	goflag.StringVar(&vmt_server_port, "vmt-port", "80", "vmt port, default 8080")
 	goflag.StringVar(&mesos_master_ip, "mesos-master-ip", "", "mesos master ip")
 	goflag.StringVar(&target_type, "target-type", "", "target type")
 	goflag.StringVar(&local_address, "local-address", "", "local address")
 	goflag.StringVar(&marathon_master, "marathon-master", "", "ip of master that runs marathon ")
+	goflag.StringVar(&opsman_username, "ops-username", "", "ops manager username")
+	goflag.StringVar(&opsman_password, "ops-password", "", "ops manager password")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
 }
