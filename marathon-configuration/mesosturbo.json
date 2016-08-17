@@ -1,0 +1,24 @@
+{
+    "id": "mesosturbo", 
+    "container": {
+        "docker": {
+            "image": "enlinxu/mesosturbo:0.5"
+        },
+        "type": "DOCKER",
+        "volumes": []
+    },
+    "args": [
+      "--v", "3",
+      "--mesos-master-ip", "",
+      "--server-ip", "",
+      "--target-type", "mesos",
+      "--local-address", "",
+      "--vmt-port", "",
+      "--ops-username", "",
+      "--ops-password", "",
+      "--marathon-master", ""
+    ],
+    "cpus": 0.5,
+    "mem": 128.0,
+    "instances": 1
+} 

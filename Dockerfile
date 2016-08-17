@@ -1,8 +1,14 @@
 # Set the base image
+
 FROM ubuntu
 
+
 # Set the file maintainer
-MAINTAINER Pamela Sanchez <pamela.sanchez@vmturbo.com>
 
-COPY ./go_app/mesosturbo /bin/mesosturbo
+MAINTAINER Enlin Xu <enlin.xu@turbonomic.com>
 
+
+ADD mesosturbo /bin/mesosturbo
+
+
+ENTRYPOINT ["/bin/mesosturbo"]
