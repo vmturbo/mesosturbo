@@ -379,6 +379,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	mapSlaveUse = make(map[string]*util.CalculatedUse)
 	var mapTaskUse map[string]*util.CalculatedUse
 	mapTaskUse = make(map[string]*util.CalculatedUse)
+	var ports_slaves = []string{}
 	for i := range respContent.Slaves {
 		s := respContent.Slaves[i]
 		fullUrl := "http://" + util.GetSlaveIP(s) + ":5051" + "/monitor/statistics.json"
@@ -410,6 +411,20 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 			CPUs:      float64(0.0),
 			Mem:       float64(0.0),
 			UsedPorts: s.UsedResources.Ports,
+		}
+
+		//		"[31100-31100, 31250-31250, 31674-31674, 31766-31766, 31944-31944, 31978-31978]"
+		original := s.UsedResources.Ports
+		portRanges := strings.Split(original, ",")
+		for prange, i := range portRanges {
+			ports := strings.Split(prange, "-")
+			if ports[0] == ports[1] {
+				ports_slaves = append(ports_slaves, ports[0])
+			} else {
+				for p, i := range ports {
+					ports_slaves = append(ports_slaves, p)
+				}
+			}
 		}
 
 		for j := range arrOfExec {
@@ -477,6 +492,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		} // task loop
 	} // slave loop
 
+	respContent.AllPorts = ports_slaves
 	// map task to resources
 	handler.taskUseMap = mapTaskUse
 	handler.slaveUseMap = mapSlaveUse
