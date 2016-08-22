@@ -436,7 +436,17 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 			} else {
 				//range from port start to end
 				for _, p := range ports {
-					ports_slaves = append(ports_slaves, p)
+					ports_slaves = append(ports_slaves, strings.Trim(p, " "))
+					port, err := strconv.Atoi(strings.Trim(p, " "))
+					if err != nil {
+						glog.V(3).Infof("Error getting port %+v", err)
+					}
+					// single slave
+					portsAtSlave[strings.Trim(p, " ")] = util.PortUtil{
+						Number:   float64(port),
+						Capacity: float64(1.0),
+						Used:     float64(1.0),
+					}
 				}
 			}
 		}

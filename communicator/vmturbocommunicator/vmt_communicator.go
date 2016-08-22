@@ -9,7 +9,6 @@ import (
 )
 
 type VMTCommunicator struct {
-	// TODO mesos client ?
 	tmpClient map[string]string
 	meta      *vmtmeta.VMTMeta
 	wsComm    *comm.WebSocketCommunicator
@@ -119,7 +118,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Selling(sdk.CommodityDTO_VMEM, emptyKey).
 		Selling(sdk.CommodityDTO_APPLICATION, fakeKey).
 		Selling(sdk.CommodityDTO_CLUSTER, fakeKey).
-		Selling(sdk.CommodityDTO_VMPM_ACCESS, fakeKey)
+		Selling(sdk.CommodityDTO_VMPM_ACCESS, fakeKey).
+		Selling(sdk.CommodityDTO_NETWORK, fakeKey)
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
 
@@ -151,6 +151,11 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
 	}
+	networkType := sdk.CommodityDTO_NETWORK
+	networkTemplateComm := &sdk.TemplateCommodity{
+		Key:           &fakeKey,
+		CommodityType: &networkType,
+	}
 	vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
 	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
 	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
@@ -163,7 +168,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Buys(*cpuAllocationTemplateComm).
 		Buys(*memAllocationTemplateComm).
 		Buys(*diskAllocationTemplateComm).
-		Buys(*clusterTemplateComm)
+		Buys(*clusterTemplateComm).
+		Buys(*networkTemplateComm)
 	glog.V(3).Infof(".......... container supply chain node builder is created ..........")
 
 	// Application supplychain builder
@@ -218,6 +224,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Commodity(diskAllocationType, true).
 		Commodity(clusterType, true).
 		Commodity(vmpmaccessType, true).
+		Commodity(networkType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Container is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 

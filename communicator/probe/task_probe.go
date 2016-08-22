@@ -4,6 +4,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
+	"strconv"
+	"strings"
 )
 
 type TaskResourceStat struct {
@@ -22,6 +24,49 @@ type TaskProbe struct {
 	Cluster        *util.ClusterInfo
 	Constraints    [][]string
 	ConstraintsMap map[string][][]string
+	PortsUsed      map[string]util.PortUtil
+}
+
+func (probe *TaskProbe) getPortsBought() {
+	// Task.Resources.Ports
+	var portsTaskUses map[string]util.PortUtil
+	portsTaskUses = make(map[string]util.PortUtil)
+	usedStr := probe.Task.Resources.Ports
+	glog.V(3).Infof("=========-------> used ports at container is %+v\n", usedStr)
+	portsStr := usedStr[1 : len(usedStr)-1]
+	glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
+	portRanges := strings.Split(portsStr, ",")
+	for _, prange := range portRanges {
+		glog.V(3).Infof("=========-------> prange is %+v\n", prange)
+		ports := strings.Split(prange, "-")
+		glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
+		portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
+		if err != nil {
+			glog.V(3).Infof(" Error: %+v", err)
+		}
+		if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
+			// ports used by Task
+			portsTaskUses[strings.Trim(ports[0], " ")] = util.PortUtil{
+				Number:   float64(portStart),
+				Capacity: float64(1.0),
+				Used:     float64(1.0),
+			}
+		} else {
+			//range from port start to end
+			for _, p := range ports {
+				port, err := strconv.Atoi(p)
+				if err != nil {
+					glog.V(3).Infof("Error getting used port. %+v\n", err)
+				}
+				portsTaskUses[strings.Trim(p, " ")] = util.PortUtil{
+					Number:   float64(port),
+					Capacity: float64(1.0),
+					Used:     float64(1.0),
+				}
+			}
+		}
+	}
+	probe.PortsUsed = portsTaskUses
 }
 
 // Get current stat of node resources, such as capacity and used values.
@@ -118,6 +163,17 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 		}
 	}
 	// TODO other constraint operator types
+	taskProbe.getPortsBought()
+	glog.V(3).Infof("\n\n\n")
+	for k, v := range taskProbe.PortsUsed {
+		glog.V(3).Infof(" -------->>>> ports used by task %+v  and  %+v \n", k, v)
+		networkCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+			Key(k).
+			Create()
+		commoditiesBought = append(commoditiesBought, networkCommBought)
+
+	}
+
 	return commoditiesBought
 }
 
