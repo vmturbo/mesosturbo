@@ -61,19 +61,19 @@ func (probe *TaskProbe) GetTaskResourceStat(mapT map[string]util.Statistics, tas
 // Build commodityDTOs for commodity sold by the pod
 func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
 	var commoditiesSold []*sdk.CommodityDTO
-	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
+	memAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
 		Key(task.Id).
 		Capacity(float64(taskResourceStat.memAllocationCapacity)).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, memAllocationComm)
-	cpuAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
+	cpuAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
 		Key(task.Id).
 		Capacity(float64(taskResourceStat.cpuAllocationCapacity)).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
-	diskAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+	diskAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
 		Key(task.Id).
 		Capacity(float64(taskResourceStat.diskAllocationCapacity)).
 		Used(taskResourceStat.diskAllocationUsed).
@@ -85,22 +85,22 @@ func (TaskProbe *TaskProbe) GetCommoditiesSoldByContainer(task *util.Task, taskR
 // Build commodityDTOs for commodity sold by the pod
 func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
 	var commoditiesBought []*sdk.CommodityDTO
-	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
+	cpuAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
 		Key("Mesos").
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
-	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
+	memAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
 		Key("Mesos").
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
-	diskAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+	diskAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
 		Key("Mesos").
 		Used(taskResourceStat.diskAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, diskAllocationCommBought)
-	clusterCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+	clusterCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CLUSTER).
 		Key(taskProbe.Cluster.ClusterName).
 		Create()
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
@@ -111,7 +111,7 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 			key := c[0]
 			val := c[2]
 			glog.V(3).Infof("========> key %s and value  ", key)
-			vmpmAccessCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
+			vmpmAccessCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
 				Key(key + ":" + val).
 				Create()
 			commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
@@ -125,7 +125,7 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 func (TaskProbe *TaskProbe) GetCommoditiesSoldByApp(task *util.Task, taskResourceStat *TaskResourceStat) []*sdk.CommodityDTO {
 	appName := task.Name
 	var commoditiesSold []*sdk.CommodityDTO
-	transactionComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_TRANSACTION).
+	transactionComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_TRANSACTION).
 		Key(appName).
 		Capacity(float64(0)).
 		Used(float64(0)).
@@ -141,17 +141,17 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	containerName := task.Id
 	containerProvider := sdk.CreateProvider(sdk.EntityDTO_CONTAINER, containerName)
 	var commoditiesBought []*sdk.CommodityDTO
-	cpuAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
+	cpuAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
 		Key(task.Id).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, cpuAllocationCommBought)
-	memAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
+	memAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
 		Key(task.Id).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBought = append(commoditiesBought, memAllocationCommBought)
-	diskAllocationCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+	diskAllocationCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
 		Key(task.Id).
 		Used(taskResourceStat.diskAllocationUsed).
 		Create()
@@ -162,19 +162,19 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	slaveProvider := sdk.CreateProvider(sdk.EntityDTO_VIRTUAL_MACHINE, task.SlaveId)
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
-	vCpuCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
+	vCpuCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VCPU).
 		//		Key(task.SlaveId).
 		Used(taskResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vCpuCommBought)
 
-	vMemCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
+	vMemCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMEM).
 		//		Key(task.SlaveId).
 		Used(taskResourceStat.memAllocationUsed).
 		Create()
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, vMemCommBought)
 
-	appCommBought := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
+	appCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(task.SlaveId).
 		Create()
 

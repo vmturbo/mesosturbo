@@ -24,7 +24,7 @@ type CalculatedUse struct {
 	Mem                  float64
 	CPUs                 float64
 	CPUsumSystemUserSecs float64
-	UsedPorts            []PortUtil
+	UsedPorts            map[string]PortUtil
 }
 
 type Statistics struct {

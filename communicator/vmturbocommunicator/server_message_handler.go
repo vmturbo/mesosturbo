@@ -3,10 +3,6 @@ package vmturbocommunicator
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
-
 	"github.com/golang/glog"
 	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/probe"
@@ -15,6 +11,11 @@ import (
 	"github.com/vmturbo/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // impletements sdk.ServerMessageHandler
@@ -101,6 +102,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
 	if err != nil && err.Error() == "update leader" {
 		mesosProbe, err = handler.NewMesosProbe(handler.taskUseMap)
+		glog.Errorf("Error, need to update leader")
 	}
 
 	if err != nil {
@@ -405,26 +407,44 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		var arrOfExec []util.Executor
 		arrOfExec = *usedRes
 
-		// TODO create port array
+		// Create port array and used port struct
+		// "[31100-31100, 31250-31250, 31674-31674, 31766-31766, 31944-31944, 31978-31978]"
+		var portsAtSlave map[string]util.PortUtil
+		portsAtSlave = make(map[string]util.PortUtil)
+		original := s.UsedResources.Ports
+		glog.V(3).Infof("=========-------> used ports is %+v\n", original)
+		portsStr := original[1 : len(original)-1]
+		glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
+		portRanges := strings.Split(portsStr, ",")
+		for _, prange := range portRanges {
+			glog.V(3).Infof("=========-------> prange is %+v\n", prange)
+			ports := strings.Split(prange, "-")
+			glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
+			portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
+			if err != nil {
+				glog.V(3).Infof(" Error: %+v", err)
+			}
+			if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
+				// all slaves
+				ports_slaves = append(ports_slaves, strings.Trim(ports[0], " "))
+				// single slave
+				portsAtSlave[strings.Trim(ports[0], " ")] = util.PortUtil{
+					Number:   float64(portStart),
+					Capacity: float64(1.0),
+					Used:     float64(1.0),
+				}
+			} else {
+				//range from port start to end
+				for _, p := range ports {
+					ports_slaves = append(ports_slaves, p)
+				}
+			}
+		}
 
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
 			CPUs:      float64(0.0),
 			Mem:       float64(0.0),
-			UsedPorts: s.UsedResources.Ports,
-		}
-
-		//		"[31100-31100, 31250-31250, 31674-31674, 31766-31766, 31944-31944, 31978-31978]"
-		original := s.UsedResources.Ports
-		portRanges := strings.Split(original, ",")
-		for prange, i := range portRanges {
-			ports := strings.Split(prange, "-")
-			if ports[0] == ports[1] {
-				ports_slaves = append(ports_slaves, ports[0])
-			} else {
-				for p, i := range ports {
-					ports_slaves = append(ports_slaves, p)
-				}
-			}
+			UsedPorts: portsAtSlave,
 		}
 
 		for j := range arrOfExec {
@@ -510,8 +530,9 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		s := m.Slaves[i]
 		// build sold commodities
 		slaveProbe := &probe.NodeProbe{
-			MasterState: m,
-			Cluster:     &m.Cluster,
+			MasterState:   m,
+			Cluster:       &m.Cluster,
+			AllSlavePorts: m.AllPorts,
 		}
 		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s, slaveUseMap)
 		if err != nil {
@@ -520,7 +541,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		}
 		slaveIP := util.GetSlaveIP(s)
 		m.SlaveIdIpMap[s.Id] = slaveIP
-		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name+"foo", commoditiesSold)
+		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name, commoditiesSold)
 		result = append(result, entityDTO)
 	}
 	glog.V(4).Infof(" entity DTOs : %d\n", len(result))

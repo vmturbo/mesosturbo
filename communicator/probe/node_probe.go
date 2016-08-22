@@ -4,6 +4,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
+	"strconv"
 )
 
 type NodeResourceStat struct {
@@ -22,8 +23,9 @@ type NodeResourceStat struct {
 // models the probe for a mesos master state , containing metadata about
 // all of the slaves
 type NodeProbe struct {
-	MasterState *util.MesosAPIResponse
-	Cluster     *util.ClusterInfo
+	MasterState   *util.MesosAPIResponse
+	Cluster       *util.ClusterInfo
+	AllSlavePorts []string
 }
 
 // Get current stat of node resources, such as capacity and used values.
@@ -80,6 +82,29 @@ func (nodeProbe *NodeProbe) getNodeResourceStat(slaveInfo *util.Slave, useMap ma
 
 }
 
+func (nodeProbe *NodeProbe) CreatePortConstraints(useMap map[string]*util.CalculatedUse) {
+	for _, port := range nodeProbe.AllSlavePorts {
+		glog.V(3).Infof(" port now is %d", port)
+		usedPort, err := strconv.Atoi(port)
+		if err != nil {
+			glog.V(3).Infof(" error in ports list")
+		}
+		for _, use := range useMap {
+			// check if slave is using port
+			if val, ok := use.UsedPorts[port]; ok {
+				//use.UsedPorts[port].Used = float64(1.0)
+				glog.V(3).Infof(" slave now is used with cap %f \n", val.Used)
+			} else {
+				use.UsedPorts[port] = util.PortUtil{
+					Number:   float64(usedPort),
+					Used:     float64(0.0),
+					Capacity: float64(1.0),
+				}
+			}
+		}
+	}
+}
+
 // Get current stat of node resources, such as capacity and used values.
 
 func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap map[string]*util.CalculatedUse) ([]*sdk.CommodityDTO, error) {
@@ -94,63 +119,67 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 	if slaveInfo.Attributes.Rack != "" {
 		strkey := "rack"
 		strval := slaveInfo.Attributes.Rack
-		glog.V(3).Infof("----------------> zone is %s", strval)
-		labels = append(labels, strkey+":"+strval)
-		glog.V(3).Infof("====================> labels : %+v", labels)
-	}
-	if slaveInfo.Attributes.Zone != "" {
-		strkey := "zone"
-		strval := slaveInfo.Attributes.Zone
-		glog.V(3).Infof("----------------> zone is %s", strval)
+		glog.V(3).Infof("----------------> rack is %s", strval)
 		labels = append(labels, strkey+":"+strval)
 		glog.V(3).Infof("====================> labels : %+v", labels)
 	}
 
 	//TODO: create const value for keys
-	memAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
+	memAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
 		Key("Mesos").
 		Capacity(float64(nodeResourceStat.memAllocationCapacity)).
 		Used(nodeResourceStat.memAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, memAllocationComm)
-	cpuAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
+	cpuAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CPU_ALLOCATION).
 		Key("Mesos").
 		Capacity(float64(nodeResourceStat.cpuAllocationCapacity)).
 		Used(nodeResourceStat.cpuAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, cpuAllocationComm)
-	diskAllocationComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
+	diskAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_STORAGE_ALLOCATION).
 		Key("Mesos").
 		Capacity(float64(nodeResourceStat.diskAllocationCapacity)).
 		Used(nodeResourceStat.diskAllocationUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, diskAllocationComm)
-	vMemComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMEM).
+	vMemComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMEM).
 		//Key(slaveInfo.Id).
 		Capacity(nodeResourceStat.vMemCapacity).
 		Used(nodeResourceStat.vMemUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vMemComm)
-	vCpuComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VCPU).
+	vCpuComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VCPU).
 		//Key(slaveInfo.Id).
 		Capacity(float64(nodeResourceStat.vCpuCapacity)).
 		Used(nodeResourceStat.vCpuUsed).
 		Create()
 	commoditiesSold = append(commoditiesSold, vCpuComm)
-	appComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_APPLICATION).
+	appComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(slaveInfo.Id).
 		Create()
 	commoditiesSold = append(commoditiesSold, appComm)
-	clusterComm := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_CLUSTER).
+	clusterComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CLUSTER).
 		Key(nodeProbe.Cluster.ClusterName).
 		Create()
 	commoditiesSold = append(commoditiesSold, clusterComm)
 
 	// TODO add port commodity sold for now
+	nodeProbe.CreatePortConstraints(useMap)
 	glog.V(2).Infof("----> used ports are: %s", useMap[slaveInfo.Id].UsedPorts)
+	ports := useMap[slaveInfo.Id].UsedPorts
+	for port, portObj := range ports {
+		portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+			Key(port). // port number in string form
+			Capacity(portObj.Capacity).
+			Used(portObj.Used).
+			Create()
+		commoditiesSold = append(commoditiesSold, portComm)
+	}
+
 	// add labels
 	for _, label := range labels {
-		vmpmAccessCommBuilder := sdk.NewCommodtiyDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS)
+		vmpmAccessCommBuilder := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS)
 		vmpmAccessCommBuilder = vmpmAccessCommBuilder.Key(label)
 		vmpmAccessComm := vmpmAccessCommBuilder.Create()
 		commoditiesSold = append(commoditiesSold, vmpmAccessComm)
