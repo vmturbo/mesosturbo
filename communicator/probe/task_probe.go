@@ -32,36 +32,38 @@ func (probe *TaskProbe) getPortsBought() {
 	var portsTaskUses map[string]util.PortUtil
 	portsTaskUses = make(map[string]util.PortUtil)
 	usedStr := probe.Task.Resources.Ports
-	glog.V(3).Infof("=========-------> used ports at container is %+v\n", usedStr)
-	portsStr := usedStr[1 : len(usedStr)-1]
-	glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
-	portRanges := strings.Split(portsStr, ",")
-	for _, prange := range portRanges {
-		glog.V(3).Infof("=========-------> prange is %+v\n", prange)
-		ports := strings.Split(prange, "-")
-		glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
-		portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
-		if err != nil {
-			glog.V(3).Infof(" Error: %+v", err)
-		}
-		if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
-			// ports used by Task
-			portsTaskUses[strings.Trim(ports[0], " ")] = util.PortUtil{
-				Number:   float64(portStart),
-				Capacity: float64(1.0),
-				Used:     float64(1.0),
+	if usedStr != "" {
+		glog.V(3).Infof("=========-------> used ports at container is %+v\n", usedStr)
+		portsStr := usedStr[1 : len(usedStr)-1]
+		glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
+		portRanges := strings.Split(portsStr, ",")
+		for _, prange := range portRanges {
+			glog.V(3).Infof("=========-------> prange is %+v\n", prange)
+			ports := strings.Split(prange, "-")
+			glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
+			portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
+			if err != nil {
+				glog.V(3).Infof(" Error: %+v", err)
 			}
-		} else {
-			//range from port start to end
-			for _, p := range ports {
-				port, err := strconv.Atoi(p)
-				if err != nil {
-					glog.V(3).Infof("Error getting used port. %+v\n", err)
-				}
-				portsTaskUses[strings.Trim(p, " ")] = util.PortUtil{
-					Number:   float64(port),
+			if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
+				// ports used by Task
+				portsTaskUses[strings.Trim(ports[0], " ")] = util.PortUtil{
+					Number:   float64(portStart),
 					Capacity: float64(1.0),
 					Used:     float64(1.0),
+				}
+			} else {
+				//range from port start to end
+				for _, p := range ports {
+					port, err := strconv.Atoi(p)
+					if err != nil {
+						glog.V(3).Infof("Error getting used port. %+v\n", err)
+					}
+					portsTaskUses[strings.Trim(p, " ")] = util.PortUtil{
+						Number:   float64(port),
+						Capacity: float64(1.0),
+						Used:     float64(1.0),
+					}
 				}
 			}
 		}
@@ -148,6 +150,7 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 	clusterCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CLUSTER).
 		Key(taskProbe.Cluster.ClusterName).
 		Create()
+	glog.V(3).Infof("-------> cluster Commodity bought by Container is %s \n", taskProbe.Cluster.ClusterName)
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
 	glog.V(3).Infof("========> size %d and labels  %+v", len(taskProbe.Task.Labels), taskProbe.Task.Labels)
 	// this is only for constraint type CLUSTER
@@ -193,7 +196,7 @@ func (TaskProbe *TaskProbe) GetCommoditiesSoldByApp(task *util.Task, taskResourc
 // Build commodityDTOs for commodity bought by the app
 func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResourceStat *TaskResourceStat) map[*sdk.ProviderDTO][]*sdk.CommodityDTO {
 	commoditiesBoughtMap := make(map[*sdk.ProviderDTO][]*sdk.CommodityDTO)
-	// TODO check about name
+	// From Container
 	containerName := task.Id
 	containerProvider := sdk.CreateProvider(sdk.EntityDTO_CONTAINER, containerName)
 	var commoditiesBought []*sdk.CommodityDTO
@@ -215,6 +218,7 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 
 	commoditiesBoughtMap[containerProvider] = commoditiesBought
 
+	// from Virtual Machine
 	slaveProvider := sdk.CreateProvider(sdk.EntityDTO_VIRTUAL_MACHINE, task.SlaveId)
 	var commoditiesBoughtFromSlave []*sdk.CommodityDTO
 
@@ -233,8 +237,12 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByApp(task *util.Task, taskResou
 	appCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_APPLICATION).
 		Key(task.SlaveId).
 		Create()
-
 	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, appCommBought)
+	clusterCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_CLUSTER).
+		Key(taskProbe.Cluster.ClusterName).
+		Create()
+	commoditiesBoughtFromSlave = append(commoditiesBoughtFromSlave, clusterCommBought)
+
 	commoditiesBoughtMap[slaveProvider] = commoditiesBoughtFromSlave
 	return commoditiesBoughtMap
 }

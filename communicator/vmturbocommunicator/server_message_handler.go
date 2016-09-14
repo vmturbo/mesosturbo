@@ -409,46 +409,47 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		// "[31100-31100, 31250-31250, 31674-31674, 31766-31766, 31944-31944, 31978-31978]"
 		var portsAtSlave map[string]util.PortUtil
 		portsAtSlave = make(map[string]util.PortUtil)
-		original := s.UsedResources.Ports
-		glog.V(3).Infof("=========-------> used ports is %+v\n", original)
-		portsStr := original[1 : len(original)-1]
-		glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
-		portRanges := strings.Split(portsStr, ",")
-		for _, prange := range portRanges {
-			glog.V(3).Infof("=========-------> prange is %+v\n", prange)
-			ports := strings.Split(prange, "-")
-			glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
-			portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
-			if err != nil {
-				glog.V(3).Infof(" Error: %+v", err)
-			}
-			if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
-				// all slaves
-				ports_slaves = append(ports_slaves, strings.Trim(ports[0], " "))
-				// single slave
-				portsAtSlave[strings.Trim(ports[0], " ")] = util.PortUtil{
-					Number:   float64(portStart),
-					Capacity: float64(1.0),
-					Used:     float64(1.0),
+		if s.UsedResources.Ports != "" {
+			original := s.UsedResources.Ports
+			glog.V(3).Infof("=========-------> used ports is %+v\n", original)
+			portsStr := original[1 : len(original)-1]
+			glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
+			portRanges := strings.Split(portsStr, ",")
+			for _, prange := range portRanges {
+				glog.V(3).Infof("=========-------> prange is %+v\n", prange)
+				ports := strings.Split(prange, "-")
+				glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
+				portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
+				if err != nil {
+					glog.V(3).Infof(" Error: %+v", err)
 				}
-			} else {
-				//range from port start to end
-				for _, p := range ports {
-					ports_slaves = append(ports_slaves, strings.Trim(p, " "))
-					port, err := strconv.Atoi(strings.Trim(p, " "))
-					if err != nil {
-						glog.V(3).Infof("Error getting port %+v", err)
-					}
+				if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
+					// all slaves
+					ports_slaves = append(ports_slaves, strings.Trim(ports[0], " "))
 					// single slave
-					portsAtSlave[strings.Trim(p, " ")] = util.PortUtil{
-						Number:   float64(port),
+					portsAtSlave[strings.Trim(ports[0], " ")] = util.PortUtil{
+						Number:   float64(portStart),
 						Capacity: float64(1.0),
 						Used:     float64(1.0),
+					}
+				} else {
+					//range from port start to end
+					for _, p := range ports {
+						ports_slaves = append(ports_slaves, strings.Trim(p, " "))
+						port, err := strconv.Atoi(strings.Trim(p, " "))
+						if err != nil {
+							glog.V(3).Infof("Error getting port %+v", err)
+						}
+						// single slave
+						portsAtSlave[strings.Trim(p, " ")] = util.PortUtil{
+							Number:   float64(port),
+							Capacity: float64(1.0),
+							Used:     float64(1.0),
+						}
 					}
 				}
 			}
 		}
-
 		mapSlaveUse[s.Id] = &util.CalculatedUse{
 			CPUs:      float64(0.0),
 			Mem:       float64(0.0),
@@ -528,6 +529,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	respContent.SlaveUseMap = mapSlaveUse
 	respContent.Cluster.MasterIP = handler.meta.MesosIP
 	respContent.Cluster.ClusterName = respContent.ClusterName
+
 	return respContent, nil
 }
 

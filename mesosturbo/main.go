@@ -38,7 +38,7 @@ func init() {
 	goflag.StringVar(&marathon_port, "marathon-port", "8080", "port of master that runs marathon ")
 	goflag.StringVar(&opsman_username, "ops-username", "", "ops manager username")
 	goflag.StringVar(&opsman_password, "ops-password", "", "ops manager password")
-	goflag.StringVar(&action_api, "action-api", "layerx", "name of actions api")
+	goflag.StringVar(&action_api, "action-api", "", "name of actions api")
 	goflag.StringVar(&action_ip, "action-ip", "127.0.0.1", "ip for taking actions")
 	goflag.StringVar(&action_port, "action-port", "5000", "port for taking actions")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
