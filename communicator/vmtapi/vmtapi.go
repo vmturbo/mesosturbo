@@ -369,7 +369,7 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 	}
 
 	// generate map of VM IPs
-	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + this.Meta.MesosIP + this.Meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is %s \n", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	glog.V(3).Infof("GET request is :  %+v\n", req)

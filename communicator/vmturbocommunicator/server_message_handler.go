@@ -170,11 +170,11 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 				}
 				glog.V(3).Infof(" destination IP is %s and task is  %s \n", slaveId, containerId)
 				return &action.MesosClient{
-					MesosMasterIP:   handler.meta.MesosActionIP,
-					MesosMasterPort: handler.meta.MesosActionPort,
-					Action:          actionpath,
-					DestinationId:   slaveId,
-					TaskId:          containerId,
+					ActionIP:      handler.meta.ActionIP,
+					ActionPort:    handler.meta.ActionPort,
+					Action:        actionpath,
+					DestinationId: slaveId,
+					TaskId:        containerId,
 				}, nil
 			}
 		} else {
@@ -231,7 +231,7 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	actionItemDTO := actionRequest.GetActionItemDTO()
 	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
 
-	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	glog.V(4).Infof("%+v", req)
@@ -266,7 +266,7 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 }
 
 func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {
-	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
@@ -274,7 +274,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Errorf("Error getting response: %s", err)
+		glog.Errorf("Error getting response: %s \n", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -284,12 +284,10 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	currentLeader := respContent.Leader
 	respContent.Leader = currentLeader[7 : len(currentLeader)-5]
 
-	fmt.Printf("respContent.Leader is ----->%s", respContent.Leader)
-	fmt.Printf("handler.meta.MesosActionOP    %s", handler.meta.MesosActionIP)
-	if respContent.Leader != handler.meta.MesosActionIP {
+	if respContent.Leader != handler.meta.MesosIP {
 		// not good, update leader
-		handler.meta.MesosActionIP = respContent.Leader
-		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosActionIP)
+		handler.meta.MesosIP = respContent.Leader
+		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosIP)
 		fmt.Println("----> UPDATE LEADER")
 		return nil, fmt.Errorf("update leader")
 	}
@@ -351,7 +349,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	defer resp.Body.Close()
 
 	//Marathon
-	fullUrlM := "http://" + handler.meta.MesosMarathonIP + ":8080" + "/v2/apps"
+	fullUrlM := "http://" + handler.meta.MarathonIP + ":" + handler.meta.MarathonPort + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
@@ -528,7 +526,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	handler.slaveUseMap = mapSlaveUse
 	respContent.MapTaskStatistics = mapTaskRes
 	respContent.SlaveUseMap = mapSlaveUse
-	respContent.Cluster.MasterIP = handler.meta.MesosActionIP
+	respContent.Cluster.MasterIP = handler.meta.MesosIP
 	respContent.Cluster.ClusterName = respContent.ClusterName
 	return respContent, nil
 }

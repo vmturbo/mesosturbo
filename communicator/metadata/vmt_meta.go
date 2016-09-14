@@ -34,9 +34,12 @@ const (
 )
 
 type VMTMeta struct {
-	MesosMarathonIP    string
-	MesosActionIP      string
-	MesosActionPort    string
+	MarathonIP         string
+	MarathonPort       string
+	MesosIP            string
+	MesosPort          string
+	ActionIP           string
+	ActionPort         string
 	ServerAddress      string
 	TargetType         string
 	NameOrAddress      string
@@ -48,6 +51,7 @@ type VMTMeta struct {
 	WebSocketPassword  string
 	OpsManagerUsername string
 	OpsManagerPassword string
+	ActionAPI          string
 }
 
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
@@ -71,15 +75,15 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 	glog.V(4).Infof("Now read configration from %s", metaConfigFilePath)
 	metaConfig := readConfig(metaConfigFilePath)
 
-	if metaConfig.MesosActionIP != "" {
-		meta.MesosActionIP = metaConfig.MesosActionIP
+	if metaConfig.ActionIP != "" {
+		meta.ActionIP = metaConfig.ActionIP
 	} else {
 		glog.V(4).Infof("Error getting LayerX Master\n")
 		return nil, errors.New("Error getting LayerX Master.")
 	}
 
-	if metaConfig.MesosActionPort != "" {
-		meta.MesosActionPort = metaConfig.MesosActionPort
+	if metaConfig.ActionPort != "" {
+		meta.ActionPort = metaConfig.ActionPort
 	} else {
 		glog.V(4).Infof("Error getting LayerX Master.\n")
 		return nil, errors.New("error getting LayerX Master\n")
