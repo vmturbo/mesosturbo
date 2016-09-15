@@ -425,6 +425,7 @@ type ActionItem struct {
 
 func decodeReservationResponse(content string) (*ServiceEntities, error) {
 	// This is a temp solution. delete the encoding header.
+	glog.V(3).Infof("     =======> %s \n", content)
 	validStartIndex := strings.Index(content, ">")
 	validContent := content[validStartIndex:]
 

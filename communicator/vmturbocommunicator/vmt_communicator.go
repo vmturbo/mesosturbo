@@ -144,11 +144,11 @@ func createSupplyChain() []*sdk.TemplateDTO {
 			Key:           &fakeKey,
 			CommodityType: &diskAllocationType,
 		}
-	*/ /*clusterType := sdk.CommodityDTO_CLUSTER
+	*/clusterType := sdk.CommodityDTO_CLUSTER
 	clusterTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
-	}*/
+	}
 	/*	networkType := sdk.CommodityDTO_NETWORK
 		networkTemplateComm := &sdk.TemplateCommodity{
 			Key:           &fakeKey,

@@ -24,6 +24,10 @@ var opsman_password string
 var action_api string
 var action_ip string
 var action_port string
+var slave_port string
+var username string
+var password string
+var targetid string
 
 func init() {
 	goflag.Set("logtostderr", "true")
@@ -41,6 +45,10 @@ func init() {
 	goflag.StringVar(&action_api, "action-api", "", "name of actions api")
 	goflag.StringVar(&action_ip, "action-ip", "127.0.0.1", "ip for taking actions")
 	goflag.StringVar(&action_port, "action-port", "5000", "port for taking actions")
+	goflag.StringVar(&username, "username", "defaultUsername", "username")
+	goflag.StringVar(&password, "password", "defaultPassword", "password")
+	goflag.StringVar(&targetid, "target-identifier", "mesostarget", "identifier for target mesos cluster")
+	goflag.StringVar(&slave_port, "slave-port", "5051", "port for taking actions")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
 }
@@ -60,15 +68,16 @@ func main() {
 		ServerAddress:      vmt_server_ip + ":" + vmt_server_port,
 		TargetType:         target_type,
 		NameOrAddress:      display_name,
-		Username:           "mesos_user",
-		TargetIdentifier:   "mesos1",
-		Password:           "password",
+		Username:           username,
+		TargetIdentifier:   targetid,
+		Password:           password,
 		LocalAddress:       "http://" + local_address,
 		WebSocketUsername:  "vmtRemoteMediation",
 		WebSocketPassword:  "vmtRemoteMediation",
-		OpsManagerUsername: "administrator",
-		OpsManagerPassword: "a",
-		ActionAPI:          "layerx",
+		OpsManagerUsername: opsman_username,
+		OpsManagerPassword: opsman_password,
+		ActionAPI:          action_api,
+		SlavePort:          slave_port,
 	}
 
 	//metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")

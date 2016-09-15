@@ -382,7 +382,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	var ports_slaves = []string{}
 	for i := range respContent.Slaves {
 		s := respContent.Slaves[i]
-		fullUrl := "http://" + util.GetSlaveIP(s) + ":5051" + "/monitor/statistics.json"
+		fullUrl := "http://" + util.GetSlaveIP(s) + ":" + handler.meta.SlavePort + "/monitor/statistics.json"
 		req, err := http.NewRequest("GET", fullUrl, nil)
 		req.Close = true
 		client := &http.Client{}

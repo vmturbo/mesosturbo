@@ -52,6 +52,7 @@ type VMTMeta struct {
 	OpsManagerUsername string
 	OpsManagerPassword string
 	ActionAPI          string
+	SlavePort          string
 }
 
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
