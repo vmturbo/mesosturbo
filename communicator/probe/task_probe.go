@@ -154,18 +154,18 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 	commoditiesBought = append(commoditiesBought, clusterCommBought)
 	glog.V(3).Infof("========> size %d and labels  %+v", len(taskProbe.Task.Labels), taskProbe.Task.Labels)
 	// this is only for constraint type CLUSTER
-	for _, c := range taskProbe.Constraints {
-		if c[1] == "CLUSTER" {
-			key := c[0]
-			val := c[2]
-			glog.V(3).Infof("========> key %s and value  ", key)
-			vmpmAccessCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
-				Key(key + ":" + val).
-				Create()
-			commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
+	/*	for _, c := range taskProbe.Constraints {
+			if c[1] == "CLUSTER" {
+				key := c[0]
+				val := c[2]
+				glog.V(3).Infof("========> key %s and value  ", key)
+				vmpmAccessCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS).
+					Key(key + ":" + val).
+					Create()
+				commoditiesBought = append(commoditiesBought, vmpmAccessCommBought)
+			}
 		}
-	}
-	// TODO other constraint operator types
+	*/ // TODO other constraint operator types
 	taskProbe.getPortsBought()
 	glog.V(3).Infof("\n\n\n")
 	for k, v := range taskProbe.PortsUsed {

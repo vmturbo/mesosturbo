@@ -115,15 +115,11 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 	}
 
 	// create labels for VM node
-	var labels = []string{}
-	if slaveInfo.Attributes.Rack != "" {
-		strkey := "rack"
-		strval := slaveInfo.Attributes.Rack
-		glog.V(3).Infof("----------------> rack is %s", strval)
-		labels = append(labels, strkey+":"+strval)
-		glog.V(3).Infof("====================> labels : %+v", labels)
-	}
-
+	/*	var labels = []string{}
+		if slaveInfo.Attributes.Rack != "" {
+		//TODO
+		}
+	*/
 	//TODO: create const value for keys
 	memAllocationComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_MEM_ALLOCATION).
 		Key("Mesos").
@@ -178,11 +174,11 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 	}
 
 	// add labels
-	for _, label := range labels {
-		vmpmAccessCommBuilder := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS)
-		vmpmAccessCommBuilder = vmpmAccessCommBuilder.Key(label)
-		vmpmAccessComm := vmpmAccessCommBuilder.Create()
-		commoditiesSold = append(commoditiesSold, vmpmAccessComm)
-	}
-	return commoditiesSold, nil
+	/*	for _, label := range labels {
+			vmpmAccessCommBuilder := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_VMPM_ACCESS)
+			vmpmAccessCommBuilder = vmpmAccessCommBuilder.Key(label)
+			vmpmAccessComm := vmpmAccessCommBuilder.Create()
+			commoditiesSold = append(commoditiesSold, vmpmAccessComm)
+		}
+	*/return commoditiesSold, nil
 }
