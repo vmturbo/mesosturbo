@@ -5,7 +5,7 @@ FROM ubuntu
 
 # Set the file maintainer
 
-MAINTAINER Enlin Xu <enlin.xu@turbonomic.com>
+MAINTAINER Pamela Sanchez <pamela.sanchez@turbonomic.com>
 
 
 ADD mesosturbo /bin/mesosturbo

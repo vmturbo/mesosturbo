@@ -33,10 +33,13 @@ const (
 	WS_SERVER_PASSWD = "vmtRemoteMediation"
 )
 
-type VMTMeta struct {
-	MesosMarathonIP    string
-	MesosActionIP      string
-	MesosActionPort    string
+type ConnectionClient struct {
+	MarathonIP         string
+	MarathonPort       string
+	MesosIP            string
+	MesosPort          string
+	ActionIP           string
+	ActionPort         string
 	ServerAddress      string
 	TargetType         string
 	NameOrAddress      string
@@ -48,13 +51,15 @@ type VMTMeta struct {
 	WebSocketPassword  string
 	OpsManagerUsername string
 	OpsManagerPassword string
+	ActionAPI          string
+	SlavePort          string
 }
 
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
 // Ops Manager Password should be set by user. Other fields have default values and can be overrided.
-func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
+func NewConnectionClient(metaConfigFilePath string) (*ConnectionClient, error) {
 	glog.V(4).Infof("in newVMTMeta\n")
-	meta := &VMTMeta{
+	meta := &ConnectionClient{
 		// ServerAddress:      SERVER_ADDRESS,
 		TargetType: TARGET_TYPE,
 		// NameOrAddress:      NAME_OR_ADDRESS,
@@ -71,15 +76,15 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 	glog.V(4).Infof("Now read configration from %s", metaConfigFilePath)
 	metaConfig := readConfig(metaConfigFilePath)
 
-	if metaConfig.MesosActionIP != "" {
-		meta.MesosActionIP = metaConfig.MesosActionIP
+	if metaConfig.ActionIP != "" {
+		meta.ActionIP = metaConfig.ActionIP
 	} else {
 		glog.V(4).Infof("Error getting LayerX Master\n")
 		return nil, errors.New("Error getting LayerX Master.")
 	}
 
-	if metaConfig.MesosActionPort != "" {
-		meta.MesosActionPort = metaConfig.MesosActionPort
+	if metaConfig.ActionPort != "" {
+		meta.ActionPort = metaConfig.ActionPort
 	} else {
 		glog.V(4).Infof("Error getting LayerX Master.\n")
 		return nil, errors.New("error getting LayerX Master\n")
@@ -143,13 +148,13 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 }
 
 // Get the config from file.
-func readConfig(path string) VMTMeta {
+func readConfig(path string) ConnectionClient {
 	file, e := ioutil.ReadFile(path)
 	if e != nil {
 		glog.Errorf("File error: %v\n", e)
 		os.Exit(1)
 	}
-	var metaData VMTMeta
+	var metaData ConnectionClient
 	json.Unmarshal(file, &metaData)
 	glog.V(4).Infof("Results: %v\n", metaData)
 	return metaData

@@ -4,8 +4,6 @@ import "time"
 
 type Attributes struct {
 	Rack string `json:"rack"`
-	Zone string `json:"zone"`
-	Foo  string `json:"foop"`
 }
 
 type Resources struct {
@@ -15,12 +13,18 @@ type Resources struct {
 	Ports string  `json:"ports"`
 }
 
+type PortUtil struct {
+	Number   float64
+	Capacity float64
+	Used     float64
+}
+
 type CalculatedUse struct {
 	Disk                 float64
 	Mem                  float64
 	CPUs                 float64
 	CPUsumSystemUserSecs float64
-	UsedPorts            string
+	UsedPorts            map[string]PortUtil
 }
 
 type Statistics struct {
@@ -51,6 +55,7 @@ type Slave struct {
 }
 
 type MesosAPIResponse struct {
+	AllPorts          []string
 	MApps             *MarathonApps
 	Version           string      `json:"version"`
 	Id                string      `json:"id"`

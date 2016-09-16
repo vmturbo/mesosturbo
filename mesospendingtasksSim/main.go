@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		glog.Errorf("error %s \n", err)
 	}
-	metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
+	metadata, err := metadata.NewConnectionClient("../communicator/metadata/config.json")
 	if err != nil {
 		glog.Errorf("error from metadata")
 	}

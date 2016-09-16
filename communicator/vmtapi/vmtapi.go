@@ -39,7 +39,7 @@ type VmtApi struct {
 
 // Metadata from configuration file
 type Reservation struct {
-	Meta *metadata.VMTMeta
+	Meta *metadata.ConnectionClient
 }
 
 const (
@@ -369,7 +369,7 @@ func (this *Reservation) RequestPlacement(pending []*action.PendingTask, request
 	}
 
 	// generate map of VM IPs
-	fullUrl := "http://" + this.Meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + this.Meta.MesosIP + ":" + this.Meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is %s \n", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	glog.V(3).Infof("GET request is :  %+v\n", req)
@@ -425,6 +425,7 @@ type ActionItem struct {
 
 func decodeReservationResponse(content string) (*ServiceEntities, error) {
 	// This is a temp solution. delete the encoding header.
+	glog.V(3).Infof("     =======> %s \n", content)
 	validStartIndex := strings.Index(content, ">")
 	validContent := content[validStartIndex:]
 
@@ -502,7 +503,7 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 
 // Watches for pending tasks through layerx requests
 // Creates VMT reservation and placement request if pending tasks are found
-func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
+func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.ConnectionClient) {
 	for {
 		time.Sleep(time.Second * 30)
 		pending, err := action.RequestPendingTasks(client)

@@ -16,9 +16,9 @@ type migration struct {
 }
 
 func RequestMesosAction(mesosClient *MesosClient) (string, error) {
-	baseUrl := "http://" + mesosClient.MesosMasterIP + ":" + mesosClient.MesosMasterPort + "/" + mesosClient.Action + "?"
+	baseUrl := "http://" + mesosClient.ActionIP + ":" + mesosClient.ActionPort + "/" + mesosClient.Action + "?"
 	//fullUrl := baseUrl + "destination_node_id=32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0&task_ids=basic-0.6432abd7-179f-11e6-9521-52540006b4aa"
-	glog.V(4).Infof(" --> The full Url is ", baseUrl)
+	glog.V(4).Infof(" --> The base Url is ", baseUrl)
 	var jsonStr []byte
 	if mesosClient.Action == "MigrateTasks" {
 		jsonStr = []byte(`{"destination_node_id":"` + mesosClient.DestinationId + `", "task_ids": ["` + mesosClient.TaskId + `"]}`)
@@ -56,9 +56,9 @@ func RequestMesosAction(mesosClient *MesosClient) (string, error) {
 
 func RequestPendingTasks(mesosClient *MesosClient) ([]*PendingTask, error) {
 	// 10.10.174.96:5555/GetPendingTasks
-	baseUrl := "http://" + mesosClient.MesosMasterIP + ":" + mesosClient.MesosMasterPort + "/" + "GetPendingTasks"
+	baseUrl := "http://" + mesosClient.ActionIP + ":" + mesosClient.ActionPort + "/" + "GetPendingTasks"
 	//fullUrl := baseUrl + "destination_node_id=32f951d7-52f8-4842-ae1f-eb8d7ec6ac94-S0&task_ids=basic-0.6432abd7-179f-11e6-9521-52540006b4aa"
-	glog.V(4).Infof(" --> The full Url is ", baseUrl)
+	glog.V(4).Infof(" --> The base Url is ", baseUrl)
 	req, err := http.NewRequest("GET", baseUrl, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -9,14 +9,13 @@ import (
 )
 
 type VMTCommunicator struct {
-	// TODO mesos client ?
 	tmpClient map[string]string
-	meta      *vmtmeta.VMTMeta
+	meta      *vmtmeta.ConnectionClient
 	wsComm    *comm.WebSocketCommunicator
 	// TODO etcdStorage storage.Storage
 }
 
-func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.VMTMeta) *VMTCommunicator {
+func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.ConnectionClient) *VMTCommunicator {
 	return &VMTCommunicator{
 		tmpClient: client,
 		meta:      vmtMetadata,
@@ -114,12 +113,11 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Entity(sdk.EntityDTO_VIRTUAL_MACHINE).
 		Selling(sdk.CommodityDTO_CPU_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_MEM_ALLOCATION, fakeKey).
-		Selling(sdk.CommodityDTO_STORAGE_ALLOCATION, fakeKey).
+		//		Selling(sdk.CommodityDTO_STORAGE_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_VCPU, emptyKey).
 		Selling(sdk.CommodityDTO_VMEM, emptyKey).
 		Selling(sdk.CommodityDTO_APPLICATION, fakeKey).
-		Selling(sdk.CommodityDTO_CLUSTER, fakeKey).
-		Selling(sdk.CommodityDTO_VMPM_ACCESS, fakeKey)
+		Selling(sdk.CommodityDTO_CLUSTER, fakeKey)
 
 	glog.V(3).Infof(".......... slave supply chain node builder is created ..........")
 
@@ -127,7 +125,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	containerSupplyChainNodeBuilder := sdk.NewSupplyChainNodeBuilder()
 	containerSupplyChainNodeBuilder = containerSupplyChainNodeBuilder.
 		Entity(sdk.EntityDTO_CONTAINER).
-		Selling(sdk.CommodityDTO_STORAGE_ALLOCATION, fakeKey).
+		//		Selling(sdk.CommodityDTO_STORAGE_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_CPU_ALLOCATION, fakeKey).
 		Selling(sdk.CommodityDTO_MEM_ALLOCATION, fakeKey)
 
@@ -141,17 +139,23 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &memAllocationType,
 	}
-	diskAllocationType := sdk.CommodityDTO_STORAGE_ALLOCATION
-	diskAllocationTemplateComm := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
-		CommodityType: &diskAllocationType,
-	}
+	/*	diskAllocationType := sdk.CommodityDTO_STORAGE_ALLOCATION
+		diskAllocationTemplateComm := &sdk.TemplateCommodity{
+			Key:           &fakeKey,
+			CommodityType: &diskAllocationType,
+		}
+	*/
 	clusterType := sdk.CommodityDTO_CLUSTER
 	clusterTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
 	}
-	vmpmaccessType := sdk.CommodityDTO_VMPM_ACCESS
+	/*	networkType := sdk.CommodityDTO_NETWORK
+		networkTemplateComm := &sdk.TemplateCommodity{
+			Key:           &fakeKey,
+			CommodityType: &networkType,
+		}
+	*/
 	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
 	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
 			Key:           &fakeKey,
@@ -162,7 +166,7 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Provider(sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_LAYERED_OVER).
 		Buys(*cpuAllocationTemplateComm).
 		Buys(*memAllocationTemplateComm).
-		Buys(*diskAllocationTemplateComm).
+		//		Buys(*diskAllocationTemplateComm).
 		Buys(*clusterTemplateComm)
 	glog.V(3).Infof(".......... container supply chain node builder is created ..........")
 
@@ -171,7 +175,6 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.
 		Entity(sdk.EntityDTO_APPLICATION).
 		Selling(sdk.CommodityDTO_TRANSACTION, fakeKey)
-	// Buys CpuAllocation/MemAllocation from Pod
 	appCpuAllocationTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &cpuAllocationType,
@@ -180,13 +183,13 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &memAllocationType,
 	}
-	appDiskAllocationTemplateComm := &sdk.TemplateCommodity{
-		Key:           &fakeKey,
-		CommodityType: &diskAllocationType,
-	}
-	appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.
+	/*	appDiskAllocationTemplateComm := &sdk.TemplateCommodity{
+			Key:           &fakeKey,
+			CommodityType: &diskAllocationType,
+		}
+	*/appSupplyChainNodeBuilder = appSupplyChainNodeBuilder.
 		Provider(sdk.EntityDTO_CONTAINER, sdk.Provider_LAYERED_OVER).
-		Buys(*appDiskAllocationTemplateComm).
+		//		Buys(*appDiskAllocationTemplateComm).
 		Buys(*appCpuAllocationTemplateComm).
 		Buys(*appMemAllocationTemplateComm)
 
@@ -215,9 +218,9 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	vmContainerExtLinkBuilder.Link(sdk.EntityDTO_CONTAINER, sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_LAYERED_OVER).
 		Commodity(cpuAllocationType, true).
 		Commodity(memAllocationType, true).
-		Commodity(diskAllocationType, true).
+		//		Commodity(diskAllocationType, true).
 		Commodity(clusterType, true).
-		Commodity(vmpmaccessType, true).
+		//	Commodity(networkType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Container is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 

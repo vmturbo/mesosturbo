@@ -3,10 +3,6 @@ package vmturbocommunicator
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
-
 	"github.com/golang/glog"
 	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/probe"
@@ -15,11 +11,16 @@ import (
 	"github.com/vmturbo/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // impletements sdk.ServerMessageHandler
 type MesosServerMessageHandler struct {
-	meta              *vmtmeta.VMTMeta
+	meta              *vmtmeta.ConnectionClient
 	wsComm            *comm.WebSocketCommunicator
 	vmtComm           *VMTCommunicator
 	lastDiscoveryTime *time.Time
@@ -101,6 +102,7 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 	mesosProbe, err := handler.NewMesosProbe(handler.taskUseMap)
 	if err != nil && err.Error() == "update leader" {
 		mesosProbe, err = handler.NewMesosProbe(handler.taskUseMap)
+		glog.Errorf("Error, need to update leader")
 	}
 
 	if err != nil {
@@ -168,11 +170,11 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 				}
 				glog.V(3).Infof(" destination IP is %s and task is  %s \n", slaveId, containerId)
 				return &action.MesosClient{
-					MesosMasterIP:   handler.meta.MesosActionIP,
-					MesosMasterPort: handler.meta.MesosActionPort,
-					Action:          actionpath,
-					DestinationId:   slaveId,
-					TaskId:          containerId,
+					ActionIP:      handler.meta.ActionIP,
+					ActionPort:    handler.meta.ActionPort,
+					Action:        actionpath,
+					DestinationId: slaveId,
+					TaskId:        containerId,
 				}, nil
 			}
 		} else {
@@ -229,7 +231,7 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	actionItemDTO := actionRequest.GetActionItemDTO()
 	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
 
-	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	glog.V(4).Infof("%+v", req)
@@ -264,7 +266,7 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 }
 
 func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {
-	fullUrl := "http://" + handler.meta.MesosActionIP + ":5050" + "/state"
+	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
@@ -272,7 +274,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Errorf("Error getting response: %s", err)
+		glog.Errorf("Error getting response: %s \n", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -282,12 +284,10 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	currentLeader := respContent.Leader
 	respContent.Leader = currentLeader[7 : len(currentLeader)-5]
 
-	fmt.Printf("respContent.Leader is ----->%s", respContent.Leader)
-	fmt.Printf("handler.meta.MesosActionOP    %s", handler.meta.MesosActionIP)
-	if respContent.Leader != handler.meta.MesosActionIP {
+	if respContent.Leader != handler.meta.MesosIP {
 		// not good, update leader
-		handler.meta.MesosActionIP = respContent.Leader
-		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosActionIP)
+		handler.meta.MesosIP = respContent.Leader
+		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosIP)
 		fmt.Println("----> UPDATE LEADER")
 		return nil, fmt.Errorf("update leader")
 	}
@@ -349,7 +349,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	defer resp.Body.Close()
 
 	//Marathon
-	fullUrlM := "http://" + handler.meta.MesosMarathonIP + ":8080" + "/v2/apps"
+	fullUrlM := "http://" + handler.meta.MarathonIP + ":" + handler.meta.MarathonPort + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
@@ -379,112 +379,163 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	mapSlaveUse = make(map[string]*util.CalculatedUse)
 	var mapTaskUse map[string]*util.CalculatedUse
 	mapTaskUse = make(map[string]*util.CalculatedUse)
+	var ports_slaves = []string{}
 	for i := range respContent.Slaves {
 		s := respContent.Slaves[i]
-		fullUrl := "http://" + util.GetSlaveIP(s) + ":5051" + "/monitor/statistics.json"
-		req, err := http.NewRequest("GET", fullUrl, nil)
-		req.Close = true
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			glog.V(4).Infof("Error getting response: %s", err)
-			return nil, err
-		}
-		defer resp.Body.Close()
-		stringResp, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			glog.V(4).Infof("error %s", err)
-		}
-		byteContent := []byte(stringResp)
-		var usedRes = new([]util.Executor)
-		err = json.Unmarshal(byteContent, &usedRes)
-		if err != nil {
-			glog.V(4).Infof("JSON error %s", err)
-		}
-		var arrOfExec []util.Executor
-		arrOfExec = *usedRes
-
-		// TODO create port array
-
-		mapSlaveUse[s.Id] = &util.CalculatedUse{
-			CPUs:      float64(0.0),
-			Mem:       float64(0.0),
-			UsedPorts: s.UsedResources.Ports,
-		}
-
-		for j := range arrOfExec {
-			executor := arrOfExec[j]
-			// TODO check if this is taskId
-			taskId := executor.Source
-			mapTaskRes[taskId] = executor.Statistics
-
-			// TASK MONITOR
-			if _, ok := mapTaskUse[taskId]; !ok {
-				var prevSecs float64
-
-				// CPU use CALCULATION STARTS
-
-				curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
-				if handler.lastDiscoveryTime == nil {
-					glog.V(4).Infof("last time from handler is nil")
-				}
-				_, ok := previousUseMap[taskId]
-				if previousUseMap == nil || !ok {
-					glog.V(4).Infof(" map was nil !!")
-					prevSecs = curSecs
-
-				} else {
-					prevSecs = previousUseMap[taskId].CPUsumSystemUserSecs
-					glog.V(4).Infof("previous system + user : %f and time %+v\n", prevSecs, respContent.TimeSinceLastDisc)
-				}
-				diffSecs := curSecs - prevSecs
-				if diffSecs < 0 {
-					diffSecs = float64(0.0)
-				}
-				glog.V(4).Infof(" t1 - t0 : %f \n", diffSecs)
-				var lastTime time.Time
-				if handler.lastDiscoveryTime == nil {
-					lastTime = time.Now()
-				} else {
-					lastTime = *handler.lastDiscoveryTime
-				}
-				diffTime := time.Since(lastTime)
-				//	fmt.Printf(" last time on record : %+v \n", lastTime)
-				diffT := diffTime.Seconds()
-				//	fmt.Printf("time since last discovery in sec : %f \n", diffT)
-				usedCPUfraction := diffSecs / diffT
-				// ratio * cores * 1000kHz
-				glog.V(4).Infof("-------------> Fraction of CPU utilization: %f \n", usedCPUfraction)
-
-				// s.Resources is # of cores
-				// usedCPU is in MHz
-				usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
-				mapTaskUse[taskId] = &util.CalculatedUse{
-					CPUs:                 usedCPU,
-					CPUsumSystemUserSecs: curSecs,
-				}
-				glog.V(4).Infof("------------> Capacity in CPUs, directly from Mesos %f \n", s.Resources.CPUs)
-				glog.V(4).Infof("------------->Used CPU in MHz : %f \n", usedCPU)
-
-				// Sum the used CPU in MHz for each slave
-				mapSlaveUse[s.Id].CPUs = usedCPU + mapSlaveUse[s.Id].CPUs
-				// Mem is returned in B convert to KB
-				// usedRes is reply from statistics.json
-				usedMem_B := executor.Statistics.MemRSSBytes
-				usedMem_KB := usedMem_B / float64(1024.0)
-				mapSlaveUse[s.Id].Mem = mapSlaveUse[s.Id].Mem + usedMem_KB
-			}
-		} // task loop
+		handler.monitorSlaveStatistics(s, previousUseMap, mapTaskRes, mapSlaveUse, mapTaskUse, ports_slaves)
 	} // slave loop
 
+	respContent.AllPorts = ports_slaves
 	// map task to resources
 	handler.taskUseMap = mapTaskUse
 	handler.slaveUseMap = mapSlaveUse
 	respContent.MapTaskStatistics = mapTaskRes
 	respContent.SlaveUseMap = mapSlaveUse
-	respContent.Cluster.MasterIP = handler.meta.MesosActionIP
+	respContent.Cluster.MasterIP = handler.meta.MesosIP
 	respContent.Cluster.ClusterName = respContent.ClusterName
+
 	return respContent, nil
+}
+
+func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, previousUseMap map[string]*util.CalculatedUse, mapTaskRes map[string]util.Statistics, mapSlaveUse map[string]*util.CalculatedUse, mapTaskUse map[string]*util.CalculatedUse, ports_slaves []string) error {
+	fullUrl := "http://" + util.GetSlaveIP(s) + ":" + handler.meta.SlavePort + "/monitor/statistics.json"
+	req, err := http.NewRequest("GET", fullUrl, nil)
+	req.Close = true
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		glog.V(4).Infof("Error getting response: %s", err)
+		return err
+	}
+	defer resp.Body.Close()
+	stringResp, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		glog.V(4).Infof("error %s", err)
+	}
+	byteContent := []byte(stringResp)
+	var usedRes = new([]util.Executor)
+	err = json.Unmarshal(byteContent, &usedRes)
+	if err != nil {
+		glog.V(4).Infof("JSON error %s", err)
+	}
+	var arrOfExec []util.Executor
+	arrOfExec = *usedRes
+
+	// Create port array and used port struct
+	// "[31100-31100, 31250-31250, 31674-31674, 31766-31766, 31944-31944, 31978-31978]"
+	var portsAtSlave map[string]util.PortUtil
+	portsAtSlave = make(map[string]util.PortUtil)
+	if s.UsedResources.Ports != "" {
+		original := s.UsedResources.Ports
+		glog.V(3).Infof("=========-------> used ports is %+v\n", original)
+		portsStr := original[1 : len(original)-1]
+		glog.V(3).Infof("=========-------> used ports is %+v\n", portsStr)
+		portRanges := strings.Split(portsStr, ",")
+		for _, prange := range portRanges {
+			glog.V(3).Infof("=========-------> prange is %+v\n", prange)
+			ports := strings.Split(prange, "-")
+			glog.V(3).Infof("=========-------> port is %+v\n", ports[0])
+			portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
+			if err != nil {
+				glog.V(3).Infof(" Error: %+v", err)
+			}
+			if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
+				// all slaves
+				ports_slaves = append(ports_slaves, strings.Trim(ports[0], " "))
+				// single slave
+				portsAtSlave[strings.Trim(ports[0], " ")] = util.PortUtil{
+					Number:   float64(portStart),
+					Capacity: float64(1.0),
+					Used:     float64(1.0),
+				}
+			} else {
+				//range from port start to end
+				for _, p := range ports {
+					ports_slaves = append(ports_slaves, strings.Trim(p, " "))
+					port, err := strconv.Atoi(strings.Trim(p, " "))
+					if err != nil {
+						glog.V(3).Infof("Error getting port %+v", err)
+					}
+					// single slave
+					portsAtSlave[strings.Trim(p, " ")] = util.PortUtil{
+						Number:   float64(port),
+						Capacity: float64(1.0),
+						Used:     float64(1.0),
+					}
+				}
+			}
+		}
+	}
+	mapSlaveUse[s.Id] = &util.CalculatedUse{
+		CPUs:      float64(0.0),
+		Mem:       float64(0.0),
+		UsedPorts: portsAtSlave,
+	}
+
+	for j := range arrOfExec {
+		executor := arrOfExec[j]
+		// TODO check if this is taskId
+		taskId := executor.Source
+		mapTaskRes[taskId] = executor.Statistics
+
+		// TASK MONITOR
+		if _, ok := mapTaskUse[taskId]; !ok {
+			var prevSecs float64
+
+			// CPU use CALCULATION STARTS
+
+			curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
+			if handler.lastDiscoveryTime == nil {
+				glog.V(4).Infof("last time from handler is nil")
+			}
+			_, ok := previousUseMap[taskId]
+			if previousUseMap == nil || !ok {
+				glog.V(4).Infof(" map was nil !!")
+				prevSecs = curSecs
+
+			} else {
+				prevSecs = previousUseMap[taskId].CPUsumSystemUserSecs
+				glog.V(4).Infof("previous system + user : %f ", prevSecs)
+			}
+			diffSecs := curSecs - prevSecs
+			if diffSecs < 0 {
+				diffSecs = float64(0.0)
+			}
+			glog.V(4).Infof(" t1 - t0 : %f \n", diffSecs)
+			var lastTime time.Time
+			if handler.lastDiscoveryTime == nil {
+				lastTime = time.Now()
+			} else {
+				lastTime = *handler.lastDiscoveryTime
+			}
+			diffTime := time.Since(lastTime)
+			//	fmt.Printf(" last time on record : %+v \n", lastTime)
+			diffT := diffTime.Seconds()
+			//	fmt.Printf("time since last discovery in sec : %f \n", diffT)
+			usedCPUfraction := diffSecs / diffT
+			// ratio * cores * 1000kHz
+			glog.V(4).Infof("-------------> Fraction of CPU utilization: %f \n", usedCPUfraction)
+
+			// s.Resources is # of cores
+			// usedCPU is in MHz
+			usedCPU := usedCPUfraction * s.Resources.CPUs * float64(1000)
+			mapTaskUse[taskId] = &util.CalculatedUse{
+				CPUs:                 usedCPU,
+				CPUsumSystemUserSecs: curSecs,
+			}
+			glog.V(4).Infof("------------> Capacity in CPUs, directly from Mesos %f \n", s.Resources.CPUs)
+			glog.V(4).Infof("------------->Used CPU in MHz : %f \n", usedCPU)
+
+			// Sum the used CPU in MHz for each slave
+			mapSlaveUse[s.Id].CPUs = usedCPU + mapSlaveUse[s.Id].CPUs
+			// Mem is returned in B convert to KB
+			// usedRes is reply from statistics.json
+			usedMem_B := executor.Statistics.MemRSSBytes
+			usedMem_KB := usedMem_B / float64(1024.0)
+			mapSlaveUse[s.Id].Mem = mapSlaveUse[s.Id].Mem + usedMem_KB
+		}
+	} // task loop
+	return nil
 }
 
 func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.CalculatedUse) ([]*sdk.EntityDTO, error) {
@@ -494,8 +545,9 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		s := m.Slaves[i]
 		// build sold commodities
 		slaveProbe := &probe.NodeProbe{
-			MasterState: m,
-			Cluster:     &m.Cluster,
+			MasterState:   m,
+			Cluster:       &m.Cluster,
+			AllSlavePorts: m.AllPorts,
 		}
 		commoditiesSold, err := slaveProbe.CreateCommoditySold(&s, slaveUseMap)
 		if err != nil {
@@ -504,7 +556,7 @@ func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.Calculated
 		}
 		slaveIP := util.GetSlaveIP(s)
 		m.SlaveIdIpMap[s.Id] = slaveIP
-		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name+"foo", commoditiesSold)
+		entityDTO := buildVMEntityDTO(slaveIP, s.Id, s.Name, commoditiesSold)
 		result = append(result, entityDTO)
 	}
 	glog.V(4).Infof(" entity DTOs : %d\n", len(result))
