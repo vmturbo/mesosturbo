@@ -10,12 +10,12 @@ import (
 
 type VMTCommunicator struct {
 	tmpClient map[string]string
-	meta      *vmtmeta.VMTMeta
+	meta      *vmtmeta.ConnectionClient
 	wsComm    *comm.WebSocketCommunicator
 	// TODO etcdStorage storage.Storage
 }
 
-func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.VMTMeta) *VMTCommunicator {
+func NewVMTCommunicator(client map[string]string, vmtMetadata *vmtmeta.ConnectionClient) *VMTCommunicator {
 	return &VMTCommunicator{
 		tmpClient: client,
 		meta:      vmtMetadata,
@@ -144,7 +144,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 			Key:           &fakeKey,
 			CommodityType: &diskAllocationType,
 		}
-	*/clusterType := sdk.CommodityDTO_CLUSTER
+	*/
+	clusterType := sdk.CommodityDTO_CLUSTER
 	clusterTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
@@ -154,7 +155,8 @@ func createSupplyChain() []*sdk.TemplateDTO {
 			Key:           &fakeKey,
 			CommodityType: &networkType,
 		}
-	*/ //vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
+	*/
+	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
 	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
 			Key:           &fakeKey,
 			CommodityType: &vmpmAccessType,

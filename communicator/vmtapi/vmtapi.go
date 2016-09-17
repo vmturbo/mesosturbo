@@ -39,7 +39,7 @@ type VmtApi struct {
 
 // Metadata from configuration file
 type Reservation struct {
-	Meta *metadata.VMTMeta
+	Meta *metadata.ConnectionClient
 }
 
 const (
@@ -503,7 +503,7 @@ func NewVmtApi(url string, externalConfiguration map[string]string) *VmtApi {
 
 // Watches for pending tasks through layerx requests
 // Creates VMT reservation and placement request if pending tasks are found
-func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.VMTMeta) {
+func CreateWatcher(client *action.MesosClient, mesosmetadata *metadata.ConnectionClient) {
 	for {
 		time.Sleep(time.Second * 30)
 		pending, err := action.RequestPendingTasks(client)

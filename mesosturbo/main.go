@@ -51,6 +51,7 @@ func init() {
 	goflag.StringVar(&slave_port, "slave-port", "5051", "port for taking actions")
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
+	goflag.CommandLine.Parse([]string{})
 }
 
 func main() {
@@ -58,7 +59,7 @@ func main() {
 	fmt.Printf("In main :)")
 	fmt.Printf(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
-	metadata := &metadata.VMTMeta{
+	metadata := &metadata.ConnectionClient{
 		MarathonIP:         marathon_ip,
 		MarathonPort:       marathon_port,
 		MesosIP:            mesos_master_ip,

@@ -33,7 +33,7 @@ const (
 	WS_SERVER_PASSWD = "vmtRemoteMediation"
 )
 
-type VMTMeta struct {
+type ConnectionClient struct {
 	MarathonIP         string
 	MarathonPort       string
 	MesosIP            string
@@ -57,9 +57,9 @@ type VMTMeta struct {
 
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
 // Ops Manager Password should be set by user. Other fields have default values and can be overrided.
-func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
+func NewConnectionClient(metaConfigFilePath string) (*ConnectionClient, error) {
 	glog.V(4).Infof("in newVMTMeta\n")
-	meta := &VMTMeta{
+	meta := &ConnectionClient{
 		// ServerAddress:      SERVER_ADDRESS,
 		TargetType: TARGET_TYPE,
 		// NameOrAddress:      NAME_OR_ADDRESS,
@@ -148,13 +148,13 @@ func NewVMTMeta(metaConfigFilePath string) (*VMTMeta, error) {
 }
 
 // Get the config from file.
-func readConfig(path string) VMTMeta {
+func readConfig(path string) ConnectionClient {
 	file, e := ioutil.ReadFile(path)
 	if e != nil {
 		glog.Errorf("File error: %v\n", e)
 		os.Exit(1)
 	}
-	var metaData VMTMeta
+	var metaData ConnectionClient
 	json.Unmarshal(file, &metaData)
 	glog.V(4).Infof("Results: %v\n", metaData)
 	return metaData
