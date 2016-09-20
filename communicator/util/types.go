@@ -177,3 +177,7 @@ type App struct {
 type MarathonApps struct {
 	Apps []App `json:"apps"`
 }
+
+type TokenResponse struct {
+	Token string `json:"token"`
+}

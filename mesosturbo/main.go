@@ -10,6 +10,8 @@ import (
 	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
+var dcos_uid string
+var dcos_pwd string
 var vmt_server_ip string
 var mesos_master_ip string
 var mesos_port string
@@ -28,9 +30,13 @@ var slave_port string
 var username string
 var password string
 var targetid string
+var dcos_token string
 
 func init() {
 	goflag.Set("logtostderr", "true")
+	goflag.StringVar(&dcos_uid, "dcos-uid", "", "dcos username")
+	goflag.StringVar(&dcos_pwd, "dcos-pwd", "", "dcos password")
+	goflag.StringVar(&dcos_token, "token", "", "dcos token")
 	goflag.StringVar(&display_name, "display-name", "mesos_default", "display name")
 	goflag.StringVar(&vmt_server_ip, "server-ip", "", "vmt server ip")
 	goflag.StringVar(&vmt_server_port, "vmt-port", "80", "vmt port, default 8080")
@@ -60,6 +66,8 @@ func main() {
 	fmt.Printf(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
 	metadata := &metadata.ConnectionClient{
+		DCOS_Username:      dcos_uid,
+		DCOS_Password:      dcos_pwd,
 		MarathonIP:         marathon_ip,
 		MarathonPort:       marathon_port,
 		MesosIP:            mesos_master_ip,
@@ -86,6 +94,89 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error!! : %s\n", err)
 		}
+	*/
+
+	// check DCOS username and password work
+	temporaryToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6Ik9UQkVOakZFTWtWQ09VRTRPRVpGTlRNMFJrWXlRa015Tnprd1JrSkVRemRCTWpBM1FqYzVOZyJ9.eyJlbWFpbCI6Imphbm5sZW5vMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6Ly9kY29zLmF1dGgwLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDEwMTU1OTUwNDc0NDg4OTU5OTQxNCIsImF1ZCI6IjN5RjVUT1N6ZGxJNDVRMXhzcHh6ZW9HQmU5Zk54bTltIiwiZXhwIjoxNDc0NzQ0NDk3LCJpYXQiOjE0NzQzMTI0OTd9.0_Mv7OycD9ZqXIif-bWDXfxewBLbpqnWNrfdo6rO1IDm39CH8D3jwffonkiwKKnoVo-GYXeayBfgasxUFSO9q2LtC-9c7Gr5RxBeYXaP3t9MHnIyFbO_kFTaCHSNU65atNaWV4bL0XRrAYFxxz3RMoA2z6hvh9cmjOlf_7X8YioPbJnLp-3mksNHIXf91yxavGgvgUvO_QUcMkVJ1FxBDYAAmOvzqKcHfmOECYoMxIOkxXH763W3ezP8_e0NHzAQypQAOuRDWRim761iz2fiIhiTfQnCBq2QvV1qOEjQYgj1vTHL9IA-Vxef17DaJ0zprJss2h9lPwWK7a0htDLpPw"
+
+	dcos_token = temporaryToken
+	var jsonStr []byte
+	url := "http://dcos-turb-elasticl-1errcrm5owzjl-1572006965.us-east-1.elb.amazonaws.com/acs/api/v1/auth/login"
+
+	if dcos_token == "" {
+		fmt.Println(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `"}`)
+		jsonStr = []byte(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `"}`)
+	} else {
+		fmt.Println(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `","token":"` + token + `"}`)
+		jsonStr = []byte(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `","token":"` + temporaryToken + `"}`)
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+	if err != nil {
+		// TODO check for Authorization error
+		glog.Errorf("Error in POST request: %s", err)
+		return nil, err
+	}
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		glog.Errorf("Error after ioutil.ReadAll: %s", err)
+		return nil, err
+	}
+
+	glog.V(4).Infof("response content is %s", string(content))
+	byteContent := []byte(content)
+	var tokenResp = new(util.TokenResponse)
+	err = json.Unmarshal(byteContent, &tokenResp)
+	if err != nil {
+		glog.Errorf("error in json unmarshal : %s", err)
+	}
+
+	metadata.Token = tokenResp.Token
+	fmt.Println("--> token we got is ")
+	fmt.Println(tokenResp.Token)
+	/*url := "http://dcos-turb-elasticl-1errcrm5owzjl-1572006965.us-east-1.elb.amazonaws.com/mesos/master/state.json"
+
+	payload := strings.NewReader("{\r\n   \"uid\":\"" + dcos_uid + "+\",\r\n   \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6Ik9UQkVOakZFTWtWQ09VRTRPRVpGTlRNMFJrWXlRa015Tnprd1JrSkVRemRCTWpBM1FqYzVOZyJ9.eyJlbWFpbCI6Imphbm5sZW5vMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6Ly9kY29zLmF1dGgwLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDEwMTU1OTUwNDc0NDg4OTU5OTQxNCIsImF1ZCI6IjN5RjVUT1N6ZGxJNDVRMXhzcHh6ZW9HQmU5Zk54bTltIiwiZXhwIjoxNDc0NzQ0NDk3LCJpYXQiOjE0NzQzMTI0OTd9.0_Mv7OycD9ZqXIif-bWDXfxewBLbpqnWNrfdo6rO1IDm39CH8D3jwffonkiwKKnoVo-GYXeayBfgasxUFSO9q2LtC-9c7Gr5RxBeYXaP3t9MHnIyFbO_kFTaCHSNU65atNaWV4bL0XRrAYFxxz3RMoA2z6hvh9cmjOlf_7X8YioPbJnLp-3mksNHIXf91yxavGgvgUvO_QUcMkVJ1FxBDYAAmOvzqKcHfmOECYoMxIOkxXH763W3ezP8_e0NHzAQypQAOuRDWRim761iz2fiIhiTfQnCBq2QvV1qOEjQYgj1vTHL9IA-Vxef17DaJ0zprJss2h9lPwWK7a0htDLpPw\",\r\n   \"password\":\"Sysdreamworks123\"\r\n}")
+
+	req, _ := http.NewRequest("GET", url, payload)
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("authorization", "token=eyJhbGciOiJIUzI1NiIsImtpZCI6InNlY3JldCIsInR5cCI6IkpXVCJ9.eyJhdWQiOiIzeUY1VE9TemRsSTQ1UTF4c3B4emVvR0JlOWZOeG05bSIsImVtYWlsIjoiamFubmxlbm8xQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJleHAiOjEuNDc0NzQ0NDk3ZSswOSwiaWF0IjoxLjQ3NDMxMjQ5N2UrMDksImlzcyI6Imh0dHBzOi8vZGNvcy5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDE1NTk1MDQ3NDQ4ODk1OTk0MTQiLCJ1aWQiOiJqYW5ubGVubzFAZ21haWwuY29tIn0.SEZ96q2LQoXK6MoeJ7VN_XRUzV5fD_hWZghNXTasSbQ")
+	req.Header.Add("cache-control", "no-cache")
+
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+	content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		glog.Errorf("Error after ioutil.ReadAll: %s", err)
+		return nil, err
+	}
+
+	glog.V(4).Infof("response content is %s", string(content))
+	byteContent := []byte(content)
+	var jsonMesosMaster = new(util.MesosAPIResponse)
+	err = json.Unmarshal(byteContent, &jsonMesosMaster)
+	if err != nil {
+		glog.Errorf("error in json unmarshal : %s", err)
+	}
+	fmt.Println(res)
+	fmt.Println(string(body))
+
+	metadata.Token = ""
 	*/
 	mesosClient := &action.MesosClient{
 		ActionIP:   metadata.ActionIP,

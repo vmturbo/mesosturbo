@@ -273,11 +273,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	glog.V(4).Infof("%+v", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		glog.Errorf("Error getting response: %s \n", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	respContent, err := parseAPIStateResponse(resp)
 

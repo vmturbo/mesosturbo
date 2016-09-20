@@ -34,6 +34,8 @@ const (
 )
 
 type ConnectionClient struct {
+	DCOS_Username      string
+	DCOS_Password      string
 	MarathonIP         string
 	MarathonPort       string
 	MesosIP            string
@@ -53,6 +55,7 @@ type ConnectionClient struct {
 	OpsManagerPassword string
 	ActionAPI          string
 	SlavePort          string
+	Token              string
 }
 
 // Create a new VMTMeta from file. ServerAddress, NameOrAddress of Kubernetes target, Ops Manager Username and
