@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	goflag "flag"
 	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
+	"github.com/vmturbo/mesosturbo/communicator/util"
 	"github.com/vmturbo/mesosturbo/communicator/vmtapi"
 	"github.com/vmturbo/mesosturbo/communicator/vmturbocommunicator"
 	"github.com/vmturbo/mesosturbo/pkg/action"
+	"io/ioutil"
+	"net/http"
 )
 
 var dcos_uid string
@@ -107,7 +112,7 @@ func main() {
 		fmt.Println(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `"}`)
 		jsonStr = []byte(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `"}`)
 	} else {
-		fmt.Println(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `","token":"` + token + `"}`)
+		fmt.Println(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `","token":"` + dcos_token + `"}`)
 		jsonStr = []byte(`{"uid":"` + dcos_uid + `","password":"` + dcos_pwd + `","token":"` + temporaryToken + `"}`)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -119,28 +124,26 @@ func main() {
 	defer resp.Body.Close()
 	if err != nil {
 		// TODO check for Authorization error
-		glog.Errorf("Error in POST request: %s", err)
-		return nil, err
+		fmt.Printf("Error in POST request: %s", err)
+		return
 	}
 
 	fmt.Println("response Status:", resp.Status)
 	fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		glog.Errorf("Error after ioutil.ReadAll: %s", err)
-		return nil, err
+		fmt.Printf("Error after ioutil.ReadAll: %s", err)
+		return
 	}
 
-	glog.V(4).Infof("response content is %s", string(content))
-	byteContent := []byte(content)
+	fmt.Printf("response content is %s", string(body))
+	byteContent := []byte(body)
 	var tokenResp = new(util.TokenResponse)
 	err = json.Unmarshal(byteContent, &tokenResp)
 	if err != nil {
-		glog.Errorf("error in json unmarshal : %s", err)
+		fmt.Printf("error in json unmarshal : %s", err)
 	}
 
 	metadata.Token = tokenResp.Token
