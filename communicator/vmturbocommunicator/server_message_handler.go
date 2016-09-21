@@ -2,6 +2,7 @@ package vmturbocommunicator
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/mesoshttp"
@@ -297,7 +298,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	// Get token if response if OK
 	if resp.Status == "" {
 		glog.Errorf("Empty response status\n")
-		return nil, err
+		return nil, errors.New("Empty response status\n")
 	}
 
 	if resp.StatusCode != 200 {
