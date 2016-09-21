@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/vmturbo/mesosturbo/communicator/mesoshttp"
 	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/probe"
 	"github.com/vmturbo/mesosturbo/communicator/util"
@@ -112,7 +113,6 @@ func (handler *MesosServerMessageHandler) DiscoverTopology(serverMsg *comm.Media
 
 	nodeEntityDtos, err := ParseNode(mesosProbe, handler.slaveUseMap)
 	if err != nil {
-		// TODO, should here still send out msg to server?
 		glog.Errorf("Error parsing nodes: %s. Will return.", err)
 		return
 	}
@@ -227,6 +227,7 @@ func CreateSlaveIpIdMap(resp *http.Response) (map[string]string, error) {
 // Receives an action request from server and call ActionExecutor to execute action.
 func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.MediationServerMessage) {
 	//	messageID := serverMsg.GetMessageID()
+
 	actionRequest := serverMsg.GetActionRequest()
 	actionItemDTO := actionRequest.GetActionItemDTO()
 	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
@@ -234,13 +235,14 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 
-	payload := strings.NewReader("{\r\n    \"uid\":\"" + handler.meta.DCOS_Username + "\",\r\n   \"token\": \"" + handler.meta.Token + "\",\r\n   \"password\":\"" + handler.meta.DCOS_Password + "\"\r\n}")
+	// TODO when we implement actions here , check
 
-	req, err := http.NewRequest("GET", fullUrl, payload)
+	req, err := http.NewRequest("GET", fullUrl, nil)
 
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", "token="+handler.meta.Token)
-	req.Header.Add("cache-control", "no-cache")
+	if handler.meta.DCOS {
+		req.Header.Add("authorization", "token="+handler.meta.Token)
+	}
 
 	glog.V(4).Infof("%+v", req)
 	client := &http.Client{}
@@ -277,22 +279,43 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
 	glog.V(4).Infof("The full Url is ", fullUrl)
 
-	payload := strings.NewReader("{\r\n    \"uid\":\"" + handler.meta.DCOS_Username + "\",\r\n   \"token\": \"" + handler.meta.Token + "\",\r\n   \"password\":\"" + handler.meta.DCOS_Password + "\"\r\n}")
-	//payload := strings.NewReader("{\r\n   \"uid\":\"" + uid + "\",\r\n   \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6Ik9UQkV    OakZFTWtWQ09VRTRPRVpGTlRNMFJrWXlRa015Tnprd1JrSkVRemRCTWpBM1FqYzVOZyJ9.eyJlbWFpbCI6Imphbm5sZW5vMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSw    iaXNzIjoiaHR0cHM6Ly9kY29zLmF1dGgwLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDEwMTU1OTUwNDc0NDg4OTU5OTQxNCIsImF1ZCI6IjN5RjVUT1N6ZGxJNDVRMXhzcHh6ZW9H    QmU5Zk54bTltIiwiZXhwIjoxNDc0NzQ0NDk3LCJpYXQiOjE0NzQzMTI0OTd9.0_Mv7OycD9ZqXIif-bWDXfxewBLbpqnWNrfdo6rO1IDm39CH8D3jwffonkiwKKnoVo-GYXeayBfgasxU    FSO9q2LtC-9c7Gr5RxBeYXaP3t9MHnIyFbO_kFTaCHSNU65atNaWV4bL0XRrAYFxxz3RMoA2z6hvh9cmjOlf_7X8YioPbJnLp-3mksNHIXf91yxavGgvgUvO_QUcMkVJ1FxBDYAAmOvzq    KcHfmOECYoMxIOkxXH763W3ezP8_e0NHzAQypQAOuRDWRim761iz2fiIhiTfQnCBq2QvV1qOEjQYgj1vTHL9IA-Vxef17DaJ0zprJss2h9lPwWK7a0htDLpPw\",\r\n\"password\":\"Sysdreamworks123\"\r\n}")
-
-	req, err := http.NewRequest("GET", fullUrl, payload)
+	req, err := http.NewRequest("GET", fullUrl, nil)
 
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", "token="+handler.meta.Token)
-	req.Header.Add("cache-control", "no-cache")
+
+	if handler.meta.DCOS {
+		req.Header.Add("authorization", "token="+handler.meta.Token)
+	}
 
 	glog.V(4).Infof("%+v", req)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+
 	if err != nil {
-		glog.Errorf("Error getting response: %s \n", err)
+		glog.V(3).Infof("Error in GET request to mesos master: %s\n", err)
 		return nil, err
 	}
+	// Get token if response if OK
+	if resp.Status == "" {
+		glog.V(3).Infof("Empty response status\n")
+		return nil, err
+	}
+
+	statusmsg := strings.Split(resp.Status, " ")
+
+	if statusmsg[0] != "200" && statusmsg[1] == "Unauthorized" {
+		//	if handler.meta
+		glog.V(3).Infof("Current token has expired, updating DCOS token.\n")
+		mesosdcosCli := &mesoshttp.MesosHTTPClient{
+			MesosMasterBase: fullUrl,
+		}
+		errormsg := mesosdcosCli.MesosPostRequest(handler.meta, handler.meta.Token)
+		if errormsg != nil {
+			glog.V(3).Infof("Please check DCOS credentials and start mesosturbo again.\n")
+			return nil, err
+		}
+	}
+
 	defer resp.Body.Close()
 	respContent, err := parseAPIStateResponse(resp)
 
@@ -302,8 +325,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	if respContent.Leader != handler.meta.MesosIP {
 		// not good, update leader
 		handler.meta.MesosIP = respContent.Leader
-		glog.V(3).Infof("the mesos master IP has been updated to : %s", handler.meta.MesosIP)
-		fmt.Println("----> UPDATE LEADER")
+		glog.V(3).Infof("The mesos master IP has been updated to : %s \n", handler.meta.MesosIP)
 		return nil, fmt.Errorf("update leader")
 	}
 
@@ -367,13 +389,13 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	fullUrlM := "http://" + handler.meta.MarathonIP + ":" + handler.meta.MarathonPort + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 
-	payload = strings.NewReader("{\r\n    \"uid\":\"" + handler.meta.DCOS_Username + "\",\r\n   \"token\": \"" + handler.meta.Token + "\",\r\n   \"password\":\"" + handler.meta.DCOS_Password + "\"\r\n}")
-
-	reqM, err := http.NewRequest("GET", fullUrlM, payload)
+	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
 	reqM.Header.Add("content-type", "application/json")
-	reqM.Header.Add("authorization", "token="+handler.meta.Token)
-	reqM.Header.Add("cache-control", "no-cache")
+
+	if handler.meta.DCOS {
+		reqM.Header.Add("authorization", "token="+handler.meta.Token)
+	}
 
 	glog.V(4).Infof("%+v", reqM)
 	clientM := &http.Client{}
@@ -422,13 +444,13 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, previousUseMap map[string]*util.CalculatedUse, mapTaskRes map[string]util.Statistics, mapSlaveUse map[string]*util.CalculatedUse, mapTaskUse map[string]*util.CalculatedUse, ports_slaves []string) error {
 	fullUrl := "http://" + util.GetSlaveIP(s) + ":" + handler.meta.SlavePort + "/monitor/statistics.json"
 
-	payload := strings.NewReader("{\r\n    \"uid\":\"" + handler.meta.DCOS_Username + "\",\r\n   \"token\": \"" + handler.meta.Token + "\",\r\n   \"password\":\"" + handler.meta.DCOS_Password + "\"\r\n}")
-
-	req, err := http.NewRequest("GET", fullUrl, payload)
+	req, err := http.NewRequest("GET", fullUrl, nil)
 
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", "token="+handler.meta.Token)
-	req.Header.Add("cache-control", "no-cache")
+
+	if handler.meta.DCOS {
+		req.Header.Add("authorization", "token="+handler.meta.Token)
+	}
 
 	req.Close = true
 	client := &http.Client{}

@@ -34,6 +34,7 @@ const (
 )
 
 type ConnectionClient struct {
+	DCOS               bool
 	DCOS_Username      string
 	DCOS_Password      string
 	MarathonIP         string

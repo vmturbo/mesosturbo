@@ -88,8 +88,12 @@ func main() {
 		OpsManagerPassword: opsman_password,
 		ActionAPI:          action_api,
 		SlavePort:          slave_port,
+		DCOS:               false,
 	}
 
+	if dcos_uid != "" && dcos_pwd != "" {
+		metadata.DCOS = true
+	}
 	//metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
 	/*
 		if err != nil {
@@ -97,14 +101,16 @@ func main() {
 		}
 	*/
 
-	// check DCOS username and password work
-	mesosAPIClient := &mesoshttp.MesosHTTPClient{}
-	err := mesosAPIClient.MesosPostRequest(metadata, dcos_token)
-	if err != nil {
-		return
+	if metadata.DCOS {
+		// check DCOS username and password work
+		mesosAPIClient := &mesoshttp.MesosHTTPClient{}
+		err := mesosAPIClient.MesosPostRequest(metadata, dcos_token)
+		if err != nil {
+			return
+		}
 	}
 
-	// Run Mesosturbo with authentication updated token
+	// Run Mesosturbo
 	mesosClient := &action.MesosClient{
 		ActionIP:   metadata.ActionIP,
 		ActionPort: metadata.ActionPort,
