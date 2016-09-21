@@ -307,7 +307,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		errormsg := mesosdcosCli.DCOSLoginRequest(handler.meta, handler.meta.Token)
 		if errormsg != nil {
 			glog.Errorf("Please check DCOS credentials and start mesosturbo again.\n")
-			return nil, err
+			return nil, errmsg
 		}
 		glog.V(3).Infof("Current token has expired, updated DCOS token.\n")
 	}
