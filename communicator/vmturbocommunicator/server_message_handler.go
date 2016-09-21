@@ -291,12 +291,12 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	resp, err := client.Do(req)
 
 	if err != nil {
-		glog.V(3).Infof("Error in GET request to mesos master: %s\n", err)
+		glog.Errorf("Error in GET request to mesos master: %s\n", err)
 		return nil, err
 	}
 	// Get token if response if OK
 	if resp.Status == "" {
-		glog.V(3).Infof("Empty response status\n")
+		glog.Errorf("Empty response status\n")
 		return nil, err
 	}
 
@@ -306,7 +306,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		}
 		errormsg := mesosdcosCli.DCOSLoginRequest(handler.meta, handler.meta.Token)
 		if errormsg != nil {
-			glog.V(3).Infof("Please check DCOS credentials and start mesosturbo again.\n")
+			glog.Errorf("Please check DCOS credentials and start mesosturbo again.\n")
 			return nil, err
 		}
 		glog.V(3).Infof("Current token has expired, updated DCOS token.\n")
