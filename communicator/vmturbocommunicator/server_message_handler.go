@@ -153,7 +153,7 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 				case sdk.EntityDTO_VIRTUAL_MACHINE:
 					vmData := targetNode.GetVirtualMachineData()
 					if vmData == nil {
-						return nil, fmt.Errorf("Missing VM data")
+						return nil, glog.Errorf("Missing VM data")
 					}
 					machineIPs = vmData.GetIpAddress()
 					break
@@ -301,19 +301,16 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		return nil, err
 	}
 
-	statusmsg := strings.Split(resp.Status, " ")
-
-	if statusmsg[0] != "200" && statusmsg[1] == "Unauthorized" {
-		//	if handler.meta
-		glog.V(3).Infof("Current token has expired, updating DCOS token.\n")
+	if resp.StatusCode != 200 {
 		mesosdcosCli := &mesoshttp.MesosHTTPClient{
 			MesosMasterBase: fullUrl,
 		}
-		errormsg := mesosdcosCli.MesosPostRequest(handler.meta, handler.meta.Token)
+		errormsg := mesosdcosCli.DCOSLoginRequest(handler.meta, handler.meta.Token)
 		if errormsg != nil {
 			glog.V(3).Infof("Please check DCOS credentials and start mesosturbo again.\n")
 			return nil, err
 		}
+		glog.V(3).Infof("Current token has expired, updated DCOS token.\n")
 	}
 
 	defer resp.Body.Close()
@@ -561,9 +558,7 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 				lastTime = *handler.lastDiscoveryTime
 			}
 			diffTime := time.Since(lastTime)
-			//	fmt.Printf(" last time on record : %+v \n", lastTime)
 			diffT := diffTime.Seconds()
-			//	fmt.Printf("time since last discovery in sec : %f \n", diffT)
 			usedCPUfraction := diffSecs / diffT
 			// ratio * cores * 1000kHz
 			glog.V(4).Infof("-------------> Fraction of CPU utilization: %f \n", usedCPUfraction)
