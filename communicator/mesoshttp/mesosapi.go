@@ -3,11 +3,12 @@ package mesoshttp
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/util"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 type MesosHTTPClient struct {
@@ -40,7 +41,7 @@ func (mesos *MesosHTTPClient) DCOSLoginRequest(metadata *metadata.ConnectionClie
 		// Get token if response if OK
 		if resp.Status == "" {
 			glog.Errorf("Empty response status \n")
-			return error.New("Empty response status \n")
+			return errors.New("Empty response status \n")
 		}
 
 		glog.Infof(" Status is : %s \n", resp.Status)

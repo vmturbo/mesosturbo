@@ -153,7 +153,7 @@ func (handler *MesosServerMessageHandler) ActionBuilder(actionItem *sdk.ActionIt
 				case sdk.EntityDTO_VIRTUAL_MACHINE:
 					vmData := targetNode.GetVirtualMachineData()
 					if vmData == nil {
-						return nil, glog.Errorf("Missing VM data")
+						return nil, fmt.Errorf("Missing VM data")
 					}
 					machineIPs = vmData.GetIpAddress()
 					break
@@ -239,8 +239,8 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
-	req.Header.Add("content-type", "application/json")
 	if handler.meta.DCOS {
+		req.Header.Add("content-type", "application/json")
 		req.Header.Add("authorization", "token="+handler.meta.Token)
 	}
 
@@ -281,9 +281,8 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
-	req.Header.Add("content-type", "application/json")
-
 	if handler.meta.DCOS {
+		req.Header.Add("content-type", "application/json")
 		req.Header.Add("authorization", "token="+handler.meta.Token)
 	}
 
@@ -388,9 +387,8 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
 
-	reqM.Header.Add("content-type", "application/json")
-
 	if handler.meta.DCOS {
+		reqM.Header.Add("content-type", "application/json")
 		reqM.Header.Add("authorization", "token="+handler.meta.Token)
 	}
 
@@ -443,9 +441,8 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
-	req.Header.Add("content-type", "application/json")
-
 	if handler.meta.DCOS {
+		req.Header.Add("content-type", "application/json")
 		req.Header.Add("authorization", "token="+handler.meta.Token)
 	}
 
