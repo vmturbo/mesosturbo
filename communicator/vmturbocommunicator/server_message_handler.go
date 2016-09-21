@@ -282,6 +282,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 
+	if err != nil {
+		glog.Errorf("Error in GET request: %s\n", err)
+		return nil, err
+	}
+
 	if handler.meta.DCOS {
 		req.Header.Add("content-type", "application/json")
 		req.Header.Add("authorization", "token="+handler.meta.Token)
