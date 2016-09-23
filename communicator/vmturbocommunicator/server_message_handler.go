@@ -334,6 +334,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	respContent, err := parseAPIStateResponse(resp)
 
+	if err != nil {
+		glog.Errorf("Error parsing Mesos master state response")
+		return nil, err
+	}
+
 	currentLeader := respContent.Leader
 	respContent.Leader = currentLeader[7 : len(currentLeader)-5]
 
@@ -347,6 +352,7 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	if respContent.SlaveIdIpMap == nil {
 		respContent.SlaveIdIpMap = make(map[string]string)
 	}
+
 	// UPDATE RESOURCE UNITS AFTER HTTP REQUEST
 	for idx := range respContent.Slaves {
 		glog.V(3).Infof("Number of slaves %d \n", len(respContent.Slaves))
@@ -356,10 +362,12 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 		s.OfferedResources.Mem = s.OfferedResources.Mem * float64(1024)
 		glog.V(3).Infof("=======> SLAVE idk: %d name: %s, mem: %.2f, cpu: %.2f, disk: %.2f \n", idx, s.Name, s.Resources.Mem, s.Resources.CPUs, s.Resources.Disk)
 	}
+
 	if err != nil {
 		glog.Errorf("Error getting response: %s", err)
 		return nil, err
 	}
+
 	glog.V(3).Infof("Get Succeed: %v\n", respContent)
 
 	if respContent.Frameworks == nil {
@@ -397,14 +405,17 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	}
 	respContent.TaskMasterAPI = *taskContent
-	glog.V(4).Infof("tasks response is %+v \n", resp.Body)
-	defer resp.Body.Close()
 
 	//Marathon
 	fullUrlM := "http://" + handler.meta.MarathonIP + ":" + handler.meta.MarathonPort + "/v2/apps"
 	glog.V(4).Infof("The full Url is ", fullUrlM)
 
 	reqM, err := http.NewRequest("GET", fullUrlM, nil)
+
+	if err != nil {
+		glog.Errorf("GET request creation for url: %s failed \n", fullUrlM)
+		return nil, err
+	}
 
 	if handler.meta.DCOS {
 		reqM.Header.Add("content-type", "application/json")
@@ -415,18 +426,19 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	clientM := &http.Client{}
 	respM, err := clientM.Do(reqM)
 	if err != nil {
-		glog.Errorf("Error getting response: %s", err)
+		glog.Errorf("Error getting response from Marathon: %s \n", err)
 		return nil, err
 	}
+	defer respM.Body.Close()
+
 	marathonRespContent, err := parseMarathonResponse(respM)
 
 	if err != nil {
-		glog.Errorf("Error getting response: %s", err)
+		glog.Errorf("Error parsing response form Marathon: %s \n", err)
 		return nil, err
 	}
 
 	glog.V(3).Infof("Marathon Get Succeed: %v\n", marathonRespContent)
-	defer resp.Body.Close()
 
 	respContent.MApps = marathonRespContent
 
@@ -443,7 +455,11 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 
 	for i := range respContent.Slaves {
 		s := respContent.Slaves[i]
-		_, someports := handler.monitorSlaveStatistics(s, previousUseMap, mapTaskRes, mapSlaveUse, mapTaskUse, ports_slaves)
+		someports, err := handler.monitorSlaveStatistics(s, previousUseMap, mapTaskRes, mapSlaveUse, mapTaskUse, ports_slaves)
+		if err != nil {
+			glog.Errorf("Error getting use data for slave %s \n", s.Name)
+			continue
+		}
 		for _, someport := range someports {
 			allports = append(allports, someport)
 		}
@@ -462,10 +478,14 @@ func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[strin
 	return respContent, nil
 }
 
-func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, previousUseMap map[string]*util.CalculatedUse, mapTaskRes map[string]util.Statistics, mapSlaveUse map[string]*util.CalculatedUse, mapTaskUse map[string]*util.CalculatedUse, ports_slaves []string) (error, []string) {
+func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, previousUseMap map[string]*util.CalculatedUse, mapTaskRes map[string]util.Statistics, mapSlaveUse map[string]*util.CalculatedUse, mapTaskUse map[string]*util.CalculatedUse, ports_slaves []string) ([]string, error) {
 	fullUrl := "http://" + util.GetSlaveIP(s) + ":" + handler.meta.SlavePort + "/monitor/statistics.json"
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if handler.meta.DCOS {
 		req.Header.Add("content-type", "application/json")
@@ -476,20 +496,23 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.V(4).Infof("Error getting response: %s", err)
-		return err, nil
+		glog.Errorf("Error getting response: %s\n", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	stringResp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		glog.V(4).Infof("error %s", err)
+		glog.Errorf("error %s\n", err)
+		return nil, err
 	}
 	byteContent := []byte(stringResp)
 	var usedRes = new([]util.Executor)
 	err = json.Unmarshal(byteContent, &usedRes)
 	if err != nil {
-		glog.V(4).Infof("JSON error %s", err)
+		glog.Errorf("JSON error %s", err)
+		return nil, err
 	}
+
 	var arrOfExec []util.Executor
 	arrOfExec = *usedRes
 
@@ -512,6 +535,7 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 			portStart, err := strconv.Atoi(strings.Trim(ports[0], " "))
 			if err != nil {
 				glog.V(3).Infof(" Error: %+v", err)
+				return nil, err
 			}
 			if strings.Trim(ports[0], " ") == strings.Trim(ports[1], " ") {
 				// all slaves
@@ -529,6 +553,7 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 					port, err := strconv.Atoi(strings.Trim(p, " "))
 					if err != nil {
 						glog.V(3).Infof("Error getting port %+v", err)
+						return nil, err
 					}
 					// single slave
 					portsAtSlave[strings.Trim(p, " ")] = util.PortUtil{
@@ -559,9 +584,6 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 			// CPU use CALCULATION STARTS
 
 			curSecs := executor.Statistics.CPUsystemTimeSecs + executor.Statistics.CPUuserTimeSecs
-			if handler.lastDiscoveryTime == nil {
-				glog.V(4).Infof("last time from handler is nil")
-			}
 			_, ok := previousUseMap[taskId]
 			if previousUseMap == nil || !ok {
 				glog.V(4).Infof(" map was nil !!")
@@ -608,7 +630,7 @@ func (handler *MesosServerMessageHandler) monitorSlaveStatistics(s util.Slave, p
 		}
 	} // task loop
 	glog.V(3).Infof(" ------------------>>>>> ALLPORTS reutrning: %+v", allports)
-	return nil, allports
+	return allports, nil
 }
 
 func ParseNode(m *util.MesosAPIResponse, slaveUseMap map[string]*util.CalculatedUse) ([]*sdk.EntityDTO, error) {
@@ -686,7 +708,7 @@ func ParseTask(m *util.MesosAPIResponse, taskUseMap map[string]*util.CalculatedU
 func parseAPITasksResponse(resp *util.MesosAPIResponse) (*util.MasterTasks, error) {
 	glog.V(4).Infof("----> in parseAPICallResponse")
 	if resp == nil {
-		return nil, fmt.Errorf("response sent in is nil")
+		return nil, errors.New("Task information response received is nil")
 	}
 	glog.V(3).Infof(" Number of frameworks is %d\n", len(resp.Frameworks))
 
@@ -725,6 +747,7 @@ func parseMarathonResponse(resp *http.Response) (*util.MarathonApps, error) {
 	err = json.Unmarshal(byteContent, &jsonMarathonMaster)
 	if err != nil {
 		glog.Errorf("error in json unmarshal : %s", err)
+		return nil, err
 	}
 	for i, app := range jsonMarathonMaster.Apps {
 		newN := app.Name[1:len(app.Name)]
@@ -737,9 +760,8 @@ func parseMarathonResponse(resp *http.Response) (*util.MarathonApps, error) {
 func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) {
 	glog.V(4).Infof("----> in parseAPICallResponse")
 	if resp == nil {
-		return nil, fmt.Errorf("response sent in is nil")
+		return nil, errors.New("Response sent from mesos/DCOS master is nil")
 	}
-	glog.V(3).Infof(" from glog response body is %s", resp.Body)
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -753,6 +775,7 @@ func parseAPIStateResponse(resp *http.Response) (*util.MesosAPIResponse, error) 
 	err = json.Unmarshal(byteContent, &jsonMesosMaster)
 	if err != nil {
 		glog.Errorf("error in json unmarshal : %s", err)
+		return nil, errors.New("Error in json unmarshal")
 	}
 	return jsonMesosMaster, nil
 }
