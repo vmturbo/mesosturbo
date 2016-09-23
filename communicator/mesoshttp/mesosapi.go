@@ -28,17 +28,23 @@ func (mesos *MesosHTTPClient) DCOSLoginRequest(metadata *metadata.ConnectionClie
 		jsonStr = []byte(`{"uid":"` + metadata.DCOS_Username + `","password":"` + metadata.DCOS_Password + `","token":"` + dcos_token + `"}`)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+
+	if err != nil {
+		glog.Errorf("Error in POST request: %s \n", err)
+		return err
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 
-	defer resp.Body.Close()
 	if err != nil {
 		glog.Errorf("Error in POST request: %s \n", err)
 		return err
 	} else {
 		// Get token if response if OK
+		defer resp.Body.Close()
 		if resp.Status == "" {
 			glog.Errorf("Empty response status \n")
 			return errors.New("Empty response status \n")
@@ -49,7 +55,7 @@ func (mesos *MesosHTTPClient) DCOSLoginRequest(metadata *metadata.ConnectionClie
 		if resp.StatusCode == 200 {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				glog.Errorf("Error after ioutil.ReadAll: %s \n", err)
+				glog.Errorf("Error in ioutil.ReadAll: %s \n", err)
 				return err
 			}
 			byteContent := []byte(body)
@@ -63,7 +69,7 @@ func (mesos *MesosHTTPClient) DCOSLoginRequest(metadata *metadata.ConnectionClie
 			return nil
 		} else {
 			glog.Errorf("Please check DCOS credentials and start mesosturbo again.\n")
-			return err
+			return errors.New("DCOS authorization credentials are not correct, check mesosturbo arguments --dcos-uid , --dcos-pwd, or --token! \n")
 		}
 
 	}

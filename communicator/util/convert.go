@@ -45,10 +45,9 @@ func CreateSlaveIpIdMap(resp *http.Response) (map[string]string, error) {
 	byteContent := []byte(content)
 	var jsonMesosMaster = new(MesosAPIResponse)
 	err = json.Unmarshal(byteContent, &jsonMesosMaster)
-	res := jsonMesosMaster.Slaves[0].Resources
-	glog.V(4).Infof("the MesosAPIResponse disk %f , mem %f , cpus %f  \n", res.Disk, res.Mem, res.CPUs)
 	if err != nil {
 		glog.V(4).Infof("error in json unmarshal : %s\n", err)
+		return nil, err
 	}
 	SlaveIpIdMap := make(map[string]string)
 	slaves := jsonMesosMaster.Slaves
@@ -57,5 +56,10 @@ func CreateSlaveIpIdMap(resp *http.Response) (map[string]string, error) {
 		slaveIP := GetSlaveIP(slaves[i])
 		SlaveIpIdMap[slaveIP] = s.Id
 	}
+	if SlaveIpIdMap == nil {
+		glog.V(3).Infof("Error creating SlaveIdIpMap \n")
+		return nil, errors.New("Error creating SlaveIdIpMap \n")
+	}
+	glog.V(4).Infof("the current SlaveIP:ID map is :  %+v \n", SlaveIpIdMap)
 	return SlaveIpIdMap, nil
 }
