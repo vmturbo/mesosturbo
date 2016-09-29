@@ -2,14 +2,17 @@ package main
 
 import (
 	goflag "flag"
-	"fmt"
+	"github.com/golang/glog"
 	"github.com/spf13/pflag"
+	"github.com/vmturbo/mesosturbo/communicator/mesoshttp"
 	"github.com/vmturbo/mesosturbo/communicator/metadata"
 	"github.com/vmturbo/mesosturbo/communicator/vmtapi"
 	"github.com/vmturbo/mesosturbo/communicator/vmturbocommunicator"
 	"github.com/vmturbo/mesosturbo/pkg/action"
 )
 
+var dcos_uid string
+var dcos_pwd string
 var vmt_server_ip string
 var mesos_master_ip string
 var mesos_port string
@@ -28,9 +31,13 @@ var slave_port string
 var username string
 var password string
 var targetid string
+var dcos_token string
 
 func init() {
 	goflag.Set("logtostderr", "true")
+	goflag.StringVar(&dcos_uid, "dcos-uid", "", "dcos username")
+	goflag.StringVar(&dcos_pwd, "dcos-pwd", "", "dcos password")
+	goflag.StringVar(&dcos_token, "token", "", "dcos token")
 	goflag.StringVar(&display_name, "display-name", "mesos_default", "display name")
 	goflag.StringVar(&vmt_server_ip, "server-ip", "", "vmt server ip")
 	goflag.StringVar(&vmt_server_port, "vmt-port", "80", "vmt port, default 8080")
@@ -56,10 +63,12 @@ func init() {
 
 func main() {
 
-	fmt.Printf("In main :)")
-	fmt.Printf(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
+	glog.V(3).Infof("Mesosturbo is running will connect to:")
+	glog.V(3).Infof(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
 	metadata := &metadata.ConnectionClient{
+		DCOS_Username:      dcos_uid,
+		DCOS_Password:      dcos_pwd,
 		MarathonIP:         marathon_ip,
 		MarathonPort:       marathon_port,
 		MesosIP:            mesos_master_ip,
@@ -79,21 +88,36 @@ func main() {
 		OpsManagerPassword: opsman_password,
 		ActionAPI:          action_api,
 		SlavePort:          slave_port,
+		DCOS:               false,
 	}
 
+	if dcos_uid != "" && dcos_pwd != "" {
+		metadata.DCOS = true
+	}
 	//metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
 	/*
 		if err != nil {
-			fmt.Printf("Error!! : %s\n", err)
+			glog.Errorf("Error!! : %s\n", err)
 		}
 	*/
+
+	if metadata.DCOS {
+		// check DCOS username and password work
+		mesosAPIClient := &mesoshttp.MesosHTTPClient{}
+		err := mesosAPIClient.DCOSLoginRequest(metadata, dcos_token)
+		if err != nil {
+			return
+		}
+	}
+
+	// Run Mesosturbo
 	mesosClient := &action.MesosClient{
 		ActionIP:   metadata.ActionIP,
 		ActionPort: metadata.ActionPort,
-		Action:     "layerx",
+		Action:     action_api,
 	}
 
-	fmt.Printf("----> metadata is %+v", metadata)
+	glog.V(3).Infof("----> metadata is %+v", metadata)
 
 	// layerx actions
 	if action_api == "layerx" {

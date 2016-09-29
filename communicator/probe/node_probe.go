@@ -164,13 +164,27 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 	nodeProbe.CreatePortConstraints(useMap)
 	glog.V(2).Infof("----> used ports are: %s", useMap[slaveInfo.Id].UsedPorts)
 	ports := useMap[slaveInfo.Id].UsedPorts
-	for port, portObj := range ports {
-		portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
-			Key(port). // port number in string form
-			Capacity(portObj.Capacity).
-			Used(portObj.Used).
-			Create()
-		commoditiesSold = append(commoditiesSold, portComm)
+	for _, p := range nodeProbe.AllSlavePorts {
+		//	for port, portObj := range ports {
+		if p != "" {
+			if portObj, ok := ports[p]; ok {
+				portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+					Key(p). // port number in string form
+					Capacity(portObj.Capacity).
+					Used(portObj.Used).
+					Create()
+				commoditiesSold = append(commoditiesSold, portComm)
+			} else {
+				portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+					Key(p). // port number in string form
+					Capacity(float64(1.0)).
+					Used(float64(0.0)).
+					Create()
+				commoditiesSold = append(commoditiesSold, portComm)
+			}
+		} else {
+			//dont add
+		}
 	}
 
 	// add labels

@@ -139,23 +139,21 @@ func createSupplyChain() []*sdk.TemplateDTO {
 		Key:           &fakeKey,
 		CommodityType: &memAllocationType,
 	}
-	/*	diskAllocationType := sdk.CommodityDTO_STORAGE_ALLOCATION
-		diskAllocationTemplateComm := &sdk.TemplateCommodity{
-			Key:           &fakeKey,
-			CommodityType: &diskAllocationType,
-		}
-	*/
+	diskAllocationType := sdk.CommodityDTO_STORAGE_ALLOCATION
+	/*diskAllocationTemplateComm := &sdk.TemplateCommodity{
+		Key:           &fakeKey,
+		CommodityType: &diskAllocationType,
+	}*/
 	clusterType := sdk.CommodityDTO_CLUSTER
 	clusterTemplateComm := &sdk.TemplateCommodity{
 		Key:           &fakeKey,
 		CommodityType: &clusterType,
 	}
-	/*	networkType := sdk.CommodityDTO_NETWORK
-		networkTemplateComm := &sdk.TemplateCommodity{
-			Key:           &fakeKey,
-			CommodityType: &networkType,
-		}
-	*/
+	networkType := sdk.CommodityDTO_NETWORK
+	/*networkTemplateComm := &sdk.TemplateCommodity{
+		Key:           &fakeKey,
+		CommodityType: &networkType,
+	}*/
 	//vmpmAccessType := sdk.CommodityDTO_VMPM_ACCESS
 	/*	vmpmAccessTemplateComm := &sdk.TemplateCommodity{
 			Key:           &fakeKey,
@@ -218,9 +216,9 @@ func createSupplyChain() []*sdk.TemplateDTO {
 	vmContainerExtLinkBuilder.Link(sdk.EntityDTO_CONTAINER, sdk.EntityDTO_VIRTUAL_MACHINE, sdk.Provider_LAYERED_OVER).
 		Commodity(cpuAllocationType, true).
 		Commodity(memAllocationType, true).
-		//		Commodity(diskAllocationType, true).
+		Commodity(diskAllocationType, true).
 		Commodity(clusterType, true).
-		//	Commodity(networkType, true).
+		Commodity(networkType, true).
 		ProbeEntityPropertyDef(sdk.SUPPLYCHAIN_CONSTANT_IP_ADDRESS, "IP Address where the Container is running").
 		ExternalEntityPropertyDef(sdk.VM_IP)
 
