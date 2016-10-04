@@ -93,12 +93,6 @@ func main() {
 	if dcos_uid != "" && dcos_pwd != "" {
 		metadata.DCOS = true
 	}
-	//metadata, err := metadata.NewVMTMeta("../communicator/metadata/config.json")
-	/*
-		if err != nil {
-			glog.Errorf("Error!! : %s\n", err)
-		}
-	*/
 
 	if metadata.DCOS {
 		// check DCOS username and password work
