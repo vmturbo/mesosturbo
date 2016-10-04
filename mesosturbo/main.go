@@ -2,6 +2,7 @@ package main
 
 import (
 	goflag "flag"
+
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	"github.com/vmturbo/mesosturbo/communicator/mesoshttp"
@@ -62,8 +63,6 @@ func init() {
 }
 
 func main() {
-
-	glog.V(3).Infof("Mesosturbo is running will connect to:")
 	glog.V(3).Infof(" server ip: %s, mesos master ip : %s \n", vmt_server_ip, mesos_master_ip)
 
 	metadata := &metadata.ConnectionClient{
