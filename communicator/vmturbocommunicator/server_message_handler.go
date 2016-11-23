@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/vmturbo/mesosturbo/communicator/mesoshttp"
 	vmtmeta "github.com/vmturbo/mesosturbo/communicator/metadata"
@@ -13,11 +19,6 @@ import (
 	"github.com/vmturbo/mesosturbo/pkg/action"
 	comm "github.com/vmturbo/vmturbo-go-sdk/communicator"
 	"github.com/vmturbo/vmturbo-go-sdk/sdk"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // impletements sdk.ServerMessageHandler
@@ -287,7 +288,12 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 }
 
 func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {
-	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
+	var fullUrl string
+	if handler.meta.MesosPort == "" {
+		fullUrl = "http://" + handler.meta.MesosIP + "/mesos/state"
+	} else {
+		fullUrl = "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
+	}
 	glog.V(4).Infof("The full Url is ", fullUrl)
 
 	req, err := http.NewRequest("GET", fullUrl, nil)

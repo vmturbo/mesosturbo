@@ -43,7 +43,7 @@ func init() {
 	goflag.StringVar(&vmtServerIP, "server-ip", "", "vmt server ip")
 	goflag.StringVar(&vmtServerPort, "vmt-port", "80", "vmt port, default 8080")
 	goflag.StringVar(&mesosMasterIP, "mesos-master-ip", "10.10.174.96", "mesos master ip")
-	goflag.StringVar(&mesosPort, "mesos-port", "5050", "mesos master port")
+	goflag.StringVar(&mesosPort, "mesos-port", "", "mesos master port")
 	goflag.StringVar(&targetType, "target-type", "", "target type")
 	goflag.StringVar(&localAddress, "local-address", "", "local address")
 	goflag.StringVar(&marathonIP, "marathon-ip", "127.0.0.1", "ip of master that runs marathon ")
