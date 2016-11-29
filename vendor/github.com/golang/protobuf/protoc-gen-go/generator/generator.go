@@ -39,6 +39,7 @@ package generator
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"go/parser"
 	"go/printer"
@@ -56,6 +57,12 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 )
+
+// generatedCodeVersion indicates a version of the generated code.
+// It is incremented whenever an incompatibility between the generated code and
+// proto package is introduced; the generated code references
+// a constant, proto.ProtoPackageIsVersionN (where N is generatedCodeVersion).
+const generatedCodeVersion = 1
 
 // A Plugin provides functionality to add to the output during Go code generation,
 // such as to produce RPC stubs.
@@ -328,24 +335,33 @@ func (ms *messageSymbol) GenerateAlias(g *Generator, pkg string) {
 		// but they're going to break weirdly for text/JSON.
 		enc := "_" + ms.sym + "_OneofMarshaler"
 		dec := "_" + ms.sym + "_OneofUnmarshaler"
+		size := "_" + ms.sym + "_OneofSizer"
 		encSig := "(msg " + g.Pkg["proto"] + ".Message, b *" + g.Pkg["proto"] + ".Buffer) error"
 		decSig := "(msg " + g.Pkg["proto"] + ".Message, tag, wire int, b *" + g.Pkg["proto"] + ".Buffer) (bool, error)"
-		g.P("func (m *", ms.sym, ") XXX_OneofFuncs() (func", encSig, ", func", decSig, ", []interface{}) {")
-		g.P("return ", enc, ", ", dec, ", nil")
+		sizeSig := "(msg " + g.Pkg["proto"] + ".Message) int"
+		g.P("func (m *", ms.sym, ") XXX_OneofFuncs() (func", encSig, ", func", decSig, ", func", sizeSig, ", []interface{}) {")
+		g.P("return ", enc, ", ", dec, ", ", size, ", nil")
 		g.P("}")
 
 		g.P("func ", enc, encSig, " {")
 		g.P("m := msg.(*", ms.sym, ")")
 		g.P("m0 := (*", remoteSym, ")(m)")
-		g.P("enc, _, _ := m0.XXX_OneofFuncs()")
+		g.P("enc, _, _, _ := m0.XXX_OneofFuncs()")
 		g.P("return enc(m0, b)")
 		g.P("}")
 
 		g.P("func ", dec, decSig, " {")
 		g.P("m := msg.(*", ms.sym, ")")
 		g.P("m0 := (*", remoteSym, ")(m)")
-		g.P("_, dec, _ := m0.XXX_OneofFuncs()")
+		g.P("_, dec, _, _ := m0.XXX_OneofFuncs()")
 		g.P("return dec(m0, tag, wire, b)")
+		g.P("}")
+
+		g.P("func ", size, sizeSig, " {")
+		g.P("m := msg.(*", ms.sym, ")")
+		g.P("m0 := (*", remoteSym, ")(m)")
+		g.P("_, _, size, _ := m0.XXX_OneofFuncs()")
+		g.P("return size(m0)")
 		g.P("}")
 	}
 	for _, get := range ms.getters {
@@ -1112,6 +1128,14 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.file = g.FileOf(file.FileDescriptorProto)
 	g.usedPackages = make(map[string]bool)
 
+	if g.file.index == 0 {
+		// For one file in the package, assert version compatibility.
+		g.P("// This is a compile-time assertion to ensure that this generated file")
+		g.P("// is compatible with the proto package it is being compiled against.")
+		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion)
+		g.P()
+	}
+
 	for _, td := range g.file.imp {
 		g.generateImported(td)
 	}
@@ -1132,6 +1156,8 @@ func (g *Generator) generate(file *FileDescriptor) {
 
 	// Run the plugins before the imports so we know which imports are necessary.
 	g.runPlugins(file)
+
+	g.generateFileDescriptor(file)
 
 	// Generate header and imports last, though they appear first in the output.
 	rem := g.Buffer
@@ -1392,6 +1418,14 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 		g.Out()
 		g.P("}")
 	}
+
+	var indexes []string
+	for m := enum.parent; m != nil; m = m.parent {
+		// XXX: skip groups?
+		indexes = append([]string{strconv.Itoa(m.index)}, indexes...)
+	}
+	indexes = append(indexes, strconv.Itoa(enum.index))
+	g.P("func (", ccTypeName, ") EnumDescriptor() ([]byte, []int) { return fileDescriptor", g.file.index, ", []int{", strings.Join(indexes, ", "), "} }")
 
 	g.P()
 }
@@ -1793,6 +1827,14 @@ func (g *Generator) generateMessage(message *Descriptor) {
 	g.P("func (m *", ccTypeName, ") Reset() { *m = ", ccTypeName, "{} }")
 	g.P("func (m *", ccTypeName, ") String() string { return ", g.Pkg["proto"], ".CompactTextString(m) }")
 	g.P("func (*", ccTypeName, ") ProtoMessage() {}")
+	if !message.group {
+		var indexes []string
+		for m := message; m != nil; m = m.parent {
+			// XXX: skip groups?
+			indexes = append([]string{strconv.Itoa(m.index)}, indexes...)
+		}
+		g.P("func (*", ccTypeName, ") Descriptor() ([]byte, []int) { return fileDescriptor", g.file.index, ", []int{", strings.Join(indexes, ", "), "} }")
+	}
 
 	// Extension support methods
 	var hasExtensions, isMessageSet bool
@@ -2105,12 +2147,14 @@ func (g *Generator) generateMessage(message *Descriptor) {
 		// method
 		enc := "_" + ccTypeName + "_OneofMarshaler"
 		dec := "_" + ccTypeName + "_OneofUnmarshaler"
+		size := "_" + ccTypeName + "_OneofSizer"
 		encSig := "(msg " + g.Pkg["proto"] + ".Message, b *" + g.Pkg["proto"] + ".Buffer) error"
 		decSig := "(msg " + g.Pkg["proto"] + ".Message, tag, wire int, b *" + g.Pkg["proto"] + ".Buffer) (bool, error)"
+		sizeSig := "(msg " + g.Pkg["proto"] + ".Message) (n int)"
 
 		g.P("// XXX_OneofFuncs is for the internal use of the proto package.")
-		g.P("func (*", ccTypeName, ") XXX_OneofFuncs() (func", encSig, ", func", decSig, ", []interface{}) {")
-		g.P("return ", enc, ", ", dec, ", []interface{}{")
+		g.P("func (*", ccTypeName, ") XXX_OneofFuncs() (func", encSig, ", func", decSig, ", func", sizeSig, ", []interface{}) {")
+		g.P("return ", enc, ", ", dec, ", ", size, ", []interface{}{")
 		for _, field := range message.Field {
 			if field.OneofIndex == nil {
 				continue
@@ -2297,6 +2341,90 @@ func (g *Generator) generateMessage(message *Descriptor) {
 		g.P("}")
 		g.P("}")
 		g.P()
+
+		// sizer
+		g.P("func ", size, sizeSig, " {")
+		g.P("m := msg.(*", ccTypeName, ")")
+		for oi, odp := range message.OneofDecl {
+			g.P("// ", odp.GetName())
+			fname := oneofFieldName[int32(oi)]
+			g.P("switch x := m.", fname, ".(type) {")
+			for _, field := range message.Field {
+				if field.OneofIndex == nil || int(*field.OneofIndex) != oi {
+					continue
+				}
+				g.P("case *", oneofTypeName[field], ":")
+				val := "x." + fieldNames[field]
+				var wire, varint, fixed string
+				switch *field.Type {
+				case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+					wire = "WireFixed64"
+					fixed = "8"
+				case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+					wire = "WireFixed32"
+					fixed = "4"
+				case descriptor.FieldDescriptorProto_TYPE_INT64,
+					descriptor.FieldDescriptorProto_TYPE_UINT64,
+					descriptor.FieldDescriptorProto_TYPE_INT32,
+					descriptor.FieldDescriptorProto_TYPE_UINT32,
+					descriptor.FieldDescriptorProto_TYPE_ENUM:
+					wire = "WireVarint"
+					varint = val
+				case descriptor.FieldDescriptorProto_TYPE_FIXED64,
+					descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+					wire = "WireFixed64"
+					fixed = "8"
+				case descriptor.FieldDescriptorProto_TYPE_FIXED32,
+					descriptor.FieldDescriptorProto_TYPE_SFIXED32:
+					wire = "WireFixed32"
+					fixed = "4"
+				case descriptor.FieldDescriptorProto_TYPE_BOOL:
+					wire = "WireVarint"
+					fixed = "1"
+				case descriptor.FieldDescriptorProto_TYPE_STRING:
+					wire = "WireBytes"
+					fixed = "len(" + val + ")"
+					varint = fixed
+				case descriptor.FieldDescriptorProto_TYPE_GROUP:
+					wire = "WireStartGroup"
+					fixed = g.Pkg["proto"] + ".Size(" + val + ")"
+				case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
+					wire = "WireBytes"
+					g.P("s := ", g.Pkg["proto"], ".Size(", val, ")")
+					fixed = "s"
+					varint = fixed
+				case descriptor.FieldDescriptorProto_TYPE_BYTES:
+					wire = "WireBytes"
+					fixed = "len(" + val + ")"
+					varint = fixed
+				case descriptor.FieldDescriptorProto_TYPE_SINT32:
+					wire = "WireVarint"
+					varint = "(uint32(" + val + ") << 1) ^ uint32((int32(" + val + ") >> 31))"
+				case descriptor.FieldDescriptorProto_TYPE_SINT64:
+					wire = "WireVarint"
+					varint = "uint64(" + val + " << 1) ^ uint64((int64(" + val + ") >> 63))"
+				default:
+					g.Fail("unhandled oneof field type ", field.Type.String())
+				}
+				g.P("n += ", g.Pkg["proto"], ".SizeVarint(", field.Number, "<<3|", g.Pkg["proto"], ".", wire, ")")
+				if varint != "" {
+					g.P("n += ", g.Pkg["proto"], ".SizeVarint(uint64(", varint, "))")
+				}
+				if fixed != "" {
+					g.P("n += ", fixed)
+				}
+				if *field.Type == descriptor.FieldDescriptorProto_TYPE_GROUP {
+					g.P("n += ", g.Pkg["proto"], ".SizeVarint(", field.Number, "<<3|", g.Pkg["proto"], ".WireEndGroup)")
+				}
+			}
+			g.P("case nil:")
+			g.P("default:")
+			g.P("panic(", g.Pkg["fmt"], ".Sprintf(\"proto: unexpected type %T in oneof\", x))")
+			g.P("}")
+		}
+		g.P("return n")
+		g.P("}")
+		g.P()
 	}
 
 	for _, ext := range message.ext {
@@ -2394,6 +2522,46 @@ func (g *Generator) generateInitFunction() {
 	g.Out()
 	g.P("}")
 	g.init = nil
+}
+
+func (g *Generator) generateFileDescriptor(file *FileDescriptor) {
+	// Make a copy and trim source_code_info data.
+	// TODO: Trim this more when we know exactly what we need.
+	pb := proto.Clone(file.FileDescriptorProto).(*descriptor.FileDescriptorProto)
+	pb.SourceCodeInfo = nil
+
+	b, err := proto.Marshal(pb)
+	if err != nil {
+		g.Fail(err.Error())
+	}
+
+	var buf bytes.Buffer
+	w, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	w.Write(b)
+	w.Close()
+	b = buf.Bytes()
+
+	v := fmt.Sprintf("fileDescriptor%d", file.index)
+	g.P()
+	g.P("var ", v, " = []byte{")
+	g.In()
+	g.P("// ", len(b), " bytes of a gzipped FileDescriptorProto")
+	for len(b) > 0 {
+		n := 16
+		if n > len(b) {
+			n = len(b)
+		}
+
+		s := ""
+		for _, c := range b[:n] {
+			s += fmt.Sprintf("0x%02x,", c)
+		}
+		g.P(s)
+
+		b = b[n:]
+	}
+	g.Out()
+	g.P("}")
 }
 
 func (g *Generator) generateEnumRegistration(enum *EnumDescriptor) {

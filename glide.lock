@@ -1,10 +1,10 @@
-hash: 8c4e0b40d897d01ba824c721df49160b3e638e3657298e39f72974b0e084915c
-updated: 2016-07-24T17:00:02.985471168-07:00
+hash: a06efa1cac46c22f0b410b3538f7ec3fbda725b797d382fd3838bda23bfad00c
+updated: 2016-11-29T12:03:02.678613677-08:00
 imports:
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/protobuf
-  version: a1dfa5ef89a13a0aa4be5a6f81179db10bfeea36
+  version: b982704f8bb716bb608144408cff30e15fbde841
   subpackages:
   - proto
 - name: github.com/google/logger
@@ -12,20 +12,20 @@ imports:
 - name: github.com/spf13/pflag
   version: 1560c1005499d61b80f865c04d39ca7505bf7f0b
 - name: github.com/vmturbo/vmturbo-go-sdk
-  version: 48be989e457dc606ddfbb322acf53824d9c644da
+  version: 41214d6ea34b9c8626aab17ca0607f3774497352
   subpackages:
   - communicator
   - sdk
 - name: golang.org/x/net
-  version: cbcac7bb8415db9b6cb4d1ebab1dc9afbd688b97
+  version: c2528b2dd8352441850638a8bb678c2ad056fd3e
   subpackages:
   - websocket
 - name: golang.org/x/sys
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:
-  - windows/svc/eventlog
   - windows
   - windows/registry
+  - windows/svc/eventlog
 - name: gopkg.in/yaml.v2
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 testImports: []

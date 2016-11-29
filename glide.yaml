@@ -4,6 +4,7 @@ import:
 - package: github.com/google/logger
 - package: github.com/spf13/pflag
 - package: github.com/vmturbo/vmturbo-go-sdk
+  version: 5.6.3 
   subpackages:
   - communicator
   - sdk
