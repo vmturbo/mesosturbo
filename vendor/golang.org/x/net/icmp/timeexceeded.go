@@ -6,34 +6,34 @@ package icmp
 
 // A TimeExceeded represents an ICMP time exceeded message body.
 type TimeExceeded struct {
-	Data       []byte      // data, known as original datagram field
-	Extensions []Extension // extensions
+	Data []byte // data
 }
 
 // Len implements the Len method of MessageBody interface.
-func (p *TimeExceeded) Len(proto int) int {
+func (p *TimeExceeded) Len() int {
 	if p == nil {
 		return 0
 	}
-	l, _ := multipartMessageBodyDataLen(proto, p.Data, p.Extensions)
-	return l
+	return 4 + len(p.Data)
 }
 
 // Marshal implements the Marshal method of MessageBody interface.
-func (p *TimeExceeded) Marshal(proto int) ([]byte, error) {
-	return marshalMultipartMessageBody(proto, p.Data, p.Extensions)
+func (p *TimeExceeded) Marshal() ([]byte, error) {
+	b := make([]byte, 4+len(p.Data))
+	copy(b[4:], p.Data)
+	return b, nil
 }
 
 // parseTimeExceeded parses b as an ICMP time exceeded message body.
-func parseTimeExceeded(proto int, b []byte) (MessageBody, error) {
-	if len(b) < 4 {
+func parseTimeExceeded(b []byte) (MessageBody, error) {
+	bodyLen := len(b)
+	if bodyLen < 4 {
 		return nil, errMessageTooShort
 	}
 	p := &TimeExceeded{}
-	var err error
-	p.Data, p.Extensions, err = parseMultipartMessageBody(proto, b)
-	if err != nil {
-		return nil, err
+	if bodyLen > 4 {
+		p.Data = make([]byte, bodyLen-4)
+		copy(p.Data, b[4:])
 	}
 	return p, nil
 }

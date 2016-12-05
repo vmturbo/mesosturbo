@@ -6,7 +6,6 @@ package charset
 
 import (
 	"bytes"
-	"encoding/xml"
 	"io/ioutil"
 	"runtime"
 	"strings"
@@ -212,25 +211,5 @@ func TestFromMeta(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("%q: got %q, want %q", tc.meta, got, tc.want)
 		}
-	}
-}
-
-func TestXML(t *testing.T) {
-	const s = "<?xml version=\"1.0\" encoding=\"windows-1252\"?><a><Word>r\xe9sum\xe9</Word></a>"
-
-	d := xml.NewDecoder(strings.NewReader(s))
-	d.CharsetReader = NewReaderLabel
-
-	var a struct {
-		Word string
-	}
-	err := d.Decode(&a)
-	if err != nil {
-		t.Fatalf("Decode: %v", err)
-	}
-
-	want := "résumé"
-	if a.Word != want {
-		t.Errorf("got %q, want %q", a.Word, want)
 	}
 }

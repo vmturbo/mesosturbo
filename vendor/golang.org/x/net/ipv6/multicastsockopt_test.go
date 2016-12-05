@@ -6,6 +6,7 @@ package ipv6_test
 
 import (
 	"net"
+	"os"
 	"runtime"
 	"testing"
 
@@ -27,20 +28,19 @@ var packetConnMulticastSocketOptionTests = []struct {
 func TestPacketConnMulticastSocketOptions(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
 	}
 	ifi := nettest.RoutedInterface("ip6", net.FlagUp|net.FlagMulticast|net.FlagLoopback)
 	if ifi == nil {
-		t.Skipf("not available on %s", runtime.GOOS)
+		t.Skipf("not available on %q", runtime.GOOS)
 	}
 
-	m, ok := nettest.SupportsRawIPSocket()
 	for _, tt := range packetConnMulticastSocketOptionTests {
-		if tt.net == "ip6" && !ok {
-			t.Log(m)
+		if tt.net == "ip6" && os.Getuid() != 0 {
+			t.Log("must be root")
 			continue
 		}
 		c, err := net.ListenPacket(tt.net+tt.proto, tt.addr)
@@ -120,7 +120,7 @@ func testSourceSpecificMulticastSocketOptions(t *testing.T, c testIPv6MulticastC
 		switch runtime.GOOS {
 		case "freebsd", "linux":
 		default: // platforms that don't support MLDv2 fail here
-			t.Logf("not supported on %s", runtime.GOOS)
+			t.Logf("not supported on %q", runtime.GOOS)
 			return
 		}
 		t.Error(err)

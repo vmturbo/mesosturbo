@@ -7,6 +7,7 @@ package ipv6_test
 import (
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"testing"
 
@@ -20,7 +21,7 @@ var supportsIPv6 bool = nettest.SupportsIPv6()
 func TestConnInitiatorPathMTU(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
@@ -44,7 +45,7 @@ func TestConnInitiatorPathMTU(t *testing.T) {
 	if pmtu, err := ipv6.NewConn(c).PathMTU(); err != nil {
 		switch runtime.GOOS {
 		case "darwin": // older darwin kernels don't support IPV6_PATHMTU option
-			t.Logf("not supported on %s", runtime.GOOS)
+			t.Logf("not supported on %q", runtime.GOOS)
 		default:
 			t.Fatal(err)
 		}
@@ -58,7 +59,7 @@ func TestConnInitiatorPathMTU(t *testing.T) {
 func TestConnResponderPathMTU(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
@@ -82,7 +83,7 @@ func TestConnResponderPathMTU(t *testing.T) {
 	if pmtu, err := ipv6.NewConn(c).PathMTU(); err != nil {
 		switch runtime.GOOS {
 		case "darwin": // older darwin kernels don't support IPV6_PATHMTU option
-			t.Logf("not supported on %s", runtime.GOOS)
+			t.Logf("not supported on %q", runtime.GOOS)
 		default:
 			t.Fatal(err)
 		}
@@ -96,13 +97,13 @@ func TestConnResponderPathMTU(t *testing.T) {
 func TestPacketConnChecksum(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
 	}
-	if m, ok := nettest.SupportsRawIPSocket(); !ok {
-		t.Skip(m)
+	if os.Getuid() != 0 {
+		t.Skip("must be root")
 	}
 
 	c, err := net.ListenPacket(fmt.Sprintf("ip6:%d", iana.ProtocolOSPFIGP), "::") // OSPF for IPv6

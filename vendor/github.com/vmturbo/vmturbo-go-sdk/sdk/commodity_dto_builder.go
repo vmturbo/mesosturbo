@@ -1,32 +1,32 @@
 package sdk
 
-type CommodityDTOBuilder struct {
+type CommodtiyDTOBuilder struct {
 	commDTO *CommodityDTO
 }
 
-func NewCommodityDTOBuilder(commodityType CommodityDTO_CommodityType) *CommodityDTOBuilder {
+func NewCommodtiyDTOBuilder(commodityType CommodityDTO_CommodityType) *CommodtiyDTOBuilder {
 	commodityDTO := new(CommodityDTO)
 	commodityDTO.CommodityType = &commodityType
-	return &CommodityDTOBuilder{
+	return &CommodtiyDTOBuilder{
 		commDTO: commodityDTO,
 	}
 }
 
-func (this *CommodityDTOBuilder) Create() *CommodityDTO {
+func (this *CommodtiyDTOBuilder) Create() *CommodityDTO {
 	return this.commDTO
 }
 
-func (this *CommodityDTOBuilder) Key(key string) *CommodityDTOBuilder {
+func (this *CommodtiyDTOBuilder) Key(key string) *CommodtiyDTOBuilder {
 	this.commDTO.Key = &key
 	return this
 }
 
-func (this *CommodityDTOBuilder) Capacity(capcity float64) *CommodityDTOBuilder {
+func (this *CommodtiyDTOBuilder) Capacity(capcity float64) *CommodtiyDTOBuilder {
 	this.commDTO.Capacity = &capcity
 	return this
 }
 
-func (this *CommodityDTOBuilder) Used(used float64) *CommodityDTOBuilder {
+func (this *CommodtiyDTOBuilder) Used(used float64) *CommodtiyDTOBuilder {
 	this.commDTO.Used = &used
 	return this
 }

@@ -6,7 +6,6 @@ package icmp
 
 import (
 	"net"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -51,15 +50,6 @@ func (c *PacketConn) IPv6PacketConn() *ipv6.PacketConn {
 func (c *PacketConn) ReadFrom(b []byte) (int, net.Addr, error) {
 	if !c.ok() {
 		return 0, nil, syscall.EINVAL
-	}
-	// Please be informed that ipv4.NewPacketConn enables
-	// IP_STRIPHDR option by default on Darwin.
-	// See golang.org/issue/9395 for futher information.
-	if runtime.GOOS == "darwin" {
-		if p, _ := c.ipc.(*ipv4.PacketConn); p != nil {
-			n, _, peer, err := p.ReadFrom(b)
-			return n, peer, err
-		}
 	}
 	return c.c.ReadFrom(b)
 }

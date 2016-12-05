@@ -7,6 +7,7 @@ package ipv6_test
 import (
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"testing"
 
@@ -23,7 +24,7 @@ var udpMultipleGroupListenerTests = []net.Addr{
 func TestUDPSinglePacketConnWithMultipleGroupListeners(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
@@ -63,7 +64,7 @@ func TestUDPSinglePacketConnWithMultipleGroupListeners(t *testing.T) {
 func TestUDPMultiplePacketConnWithMultipleGroupListeners(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
@@ -115,7 +116,7 @@ func TestUDPMultiplePacketConnWithMultipleGroupListeners(t *testing.T) {
 func TestUDPPerInterfaceSinglePacketConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
@@ -158,13 +159,13 @@ func TestUDPPerInterfaceSinglePacketConnWithSingleGroupListener(t *testing.T) {
 func TestIPSinglePacketConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
 	}
-	if m, ok := nettest.SupportsRawIPSocket(); !ok {
-		t.Skip(m)
+	if os.Getuid() != 0 {
+		t.Skip("must be root")
 	}
 
 	c, err := net.ListenPacket("ip6:ipv6-icmp", "::") // wildcard address
@@ -200,15 +201,15 @@ func TestIPSinglePacketConnWithSingleGroupListener(t *testing.T) {
 func TestIPPerInterfaceSinglePacketConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "darwin", "dragonfly", "openbsd": // platforms that return fe80::1%lo0: bind: can't assign requested address
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if !supportsIPv6 {
 		t.Skip("ipv6 is not supported")
 	}
-	if m, ok := nettest.SupportsRawIPSocket(); !ok {
-		t.Skip(m)
+	if os.Getuid() != 0 {
+		t.Skip("must be root")
 	}
 
 	gaddr := net.IPAddr{IP: net.ParseIP("ff02::114")} // see RFC 4727

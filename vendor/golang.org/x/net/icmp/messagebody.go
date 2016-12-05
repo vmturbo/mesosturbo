@@ -7,12 +7,10 @@ package icmp
 // A MessageBody represents an ICMP message body.
 type MessageBody interface {
 	// Len returns the length of ICMP message body.
-	// Proto must be either the ICMPv4 or ICMPv6 protocol number.
-	Len(proto int) int
+	Len() int
 
 	// Marshal returns the binary enconding of ICMP message body.
-	// Proto must be either the ICMPv4 or ICMPv6 protocol number.
-	Marshal(proto int) ([]byte, error)
+	Marshal() ([]byte, error)
 }
 
 // A DefaultMessageBody represents the default message body.
@@ -21,7 +19,7 @@ type DefaultMessageBody struct {
 }
 
 // Len implements the Len method of MessageBody interface.
-func (p *DefaultMessageBody) Len(proto int) int {
+func (p *DefaultMessageBody) Len() int {
 	if p == nil {
 		return 0
 	}
@@ -29,12 +27,12 @@ func (p *DefaultMessageBody) Len(proto int) int {
 }
 
 // Marshal implements the Marshal method of MessageBody interface.
-func (p *DefaultMessageBody) Marshal(proto int) ([]byte, error) {
+func (p *DefaultMessageBody) Marshal() ([]byte, error) {
 	return p.Data, nil
 }
 
 // parseDefaultMessageBody parses b as an ICMP message body.
-func parseDefaultMessageBody(proto int, b []byte) (MessageBody, error) {
+func parseDefaultMessageBody(b []byte) (MessageBody, error) {
 	p := &DefaultMessageBody{Data: make([]byte, len(b))}
 	copy(p.Data, b)
 	return p, nil

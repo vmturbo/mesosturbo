@@ -234,8 +234,7 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 	//	messageID := serverMsg.GetMessageID()
 
 	actionRequest := serverMsg.GetActionRequest()
-	actionExecutionDTO := actionRequest.GetActionExecutionDTO()
-	actionItemDTO := actionExecutionDTO.GetActionItem()
+	actionItemDTO := actionRequest.GetActionItemDTO()
 	glog.V(3).Infof("The received ActionItemDTO is %v", actionItemDTO)
 
 	fullUrl := "http://" + handler.meta.MesosIP + ":" + handler.meta.MesosPort + "/state"
@@ -269,21 +268,23 @@ func (handler *MesosServerMessageHandler) HandleAction(serverMsg *comm.Mediation
 		return
 	}
 
-	glog.V(3).Infof("Handling action Items")
-        for i := range actionItemDTO {
-		simulator, err := handler.ActionBuilder(actionItemDTO[i], respMap)
-        	if err != nil {
-                	glog.Errorf("error %s \n", err)
-	        }
-	        _, err = action.RequestMesosAction(simulator)
-        	if err != nil {
-                	glog.Errorf("error %s \n", err)
-	        }
-        	// response
-        	handler.vmtComm.SendActionResponse(sdk.ActionResponseState_SUCCEEDED, int32(100), serverMsg.GetMessageID(), "Success")
+	simulator, err := handler.ActionBuilder(actionItemDTO, respMap)
+	if err != nil {
+		glog.Errorf("error %s \n", err)
+	}
+	_, err = action.RequestMesosAction(simulator)
+	if err != nil {
+		glog.Errorf("error %s \n", err)
+	}
+	// response
+	handler.vmtComm.SendActionResponse(sdk.ActionResponseState_SUCCEEDED, int32(100), serverMsg.GetMessageID(), "Success")
 
-        }
-
+	/*
+		err := actionExecutor.ExcuteAction(actionItemDTO, messageID)
+		if err != nil {
+			glog.Errorf("Error execute action: %s", err)
+		}
+	*/
 }
 
 func (handler *MesosServerMessageHandler) NewMesosProbe(previousUseMap map[string]*util.CalculatedUse) (*util.MesosAPIResponse, error) {

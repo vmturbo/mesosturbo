@@ -6,6 +6,7 @@ package ipv4_test
 
 import (
 	"net"
+	"os"
 	"runtime"
 	"testing"
 
@@ -22,7 +23,7 @@ var udpMultipleGroupListenerTests = []net.Addr{
 func TestUDPSinglePacketConnWithMultipleGroupListeners(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if testing.Short() {
 		t.Skip("to avoid external network")
@@ -62,7 +63,7 @@ func TestUDPSinglePacketConnWithMultipleGroupListeners(t *testing.T) {
 func TestUDPMultiplePacketConnWithMultipleGroupListeners(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if testing.Short() {
 		t.Skip("to avoid external network")
@@ -114,7 +115,7 @@ func TestUDPMultiplePacketConnWithMultipleGroupListeners(t *testing.T) {
 func TestUDPPerInterfaceSinglePacketConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if testing.Short() {
 		t.Skip("to avoid external network")
@@ -157,13 +158,13 @@ func TestUDPPerInterfaceSinglePacketConnWithSingleGroupListener(t *testing.T) {
 func TestIPSingleRawConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if testing.Short() {
 		t.Skip("to avoid external network")
 	}
-	if m, ok := nettest.SupportsRawIPSocket(); !ok {
-		t.Skip(m)
+	if os.Getuid() != 0 {
+		t.Skip("must be root")
 	}
 
 	c, err := net.ListenPacket("ip4:icmp", "0.0.0.0") // wildcard address
@@ -202,13 +203,13 @@ func TestIPSingleRawConnWithSingleGroupListener(t *testing.T) {
 func TestIPPerInterfaceSingleRawConnWithSingleGroupListener(t *testing.T) {
 	switch runtime.GOOS {
 	case "nacl", "plan9", "solaris", "windows":
-		t.Skipf("not supported on %s", runtime.GOOS)
+		t.Skipf("not supported on %q", runtime.GOOS)
 	}
 	if testing.Short() {
 		t.Skip("to avoid external network")
 	}
-	if m, ok := nettest.SupportsRawIPSocket(); !ok {
-		t.Skip(m)
+	if os.Getuid() != 0 {
+		t.Skip("must be root")
 	}
 
 	gaddr := net.IPAddr{IP: net.IPv4(224, 0, 0, 254)} // see RFC 4727

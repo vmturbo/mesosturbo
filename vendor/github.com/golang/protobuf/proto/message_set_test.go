@@ -38,7 +38,7 @@ import (
 
 func TestUnmarshalMessageSetWithDuplicate(t *testing.T) {
 	// Check that a repeated message set entry will be concatenated.
-	in := &messageSet{
+	in := &MessageSet{
 		Item: []*_MessageSet_Item{
 			{TypeId: Int32(12345), Message: []byte("hoo")},
 			{TypeId: Int32(12345), Message: []byte("hah")},
