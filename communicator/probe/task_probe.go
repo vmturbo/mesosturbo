@@ -166,16 +166,20 @@ func (taskProbe *TaskProbe) GetCommoditiesBoughtByContainer(task *util.Task, tas
 			}
 		}
 	*/ // TODO other constraint operator types
-	taskProbe.getPortsBought()
-	glog.V(3).Infof("\n\n\n")
-	for k, v := range taskProbe.PortsUsed {
-		glog.V(3).Infof(" -------->>>> ports used by task %+v  and  %+v \n", k, v)
-		networkCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
-			Key(k).
-			Create()
-		commoditiesBought = append(commoditiesBought, networkCommBought)
 
-	}
+	/*
+		// ports bought added
+		taskProbe.getPortsBought()
+		glog.V(3).Infof("\n\n\n")
+		for k, v := range taskProbe.PortsUsed {
+			glog.V(3).Infof(" -------->>>> ports used by task %+v  and  %+v \n", k, v)
+			networkCommBought := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+				Key(k).
+				Create()
+			commoditiesBought = append(commoditiesBought, networkCommBought)
+
+		}
+	*/
 
 	return commoditiesBought
 }

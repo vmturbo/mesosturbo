@@ -160,32 +160,34 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 		Create()
 	commoditiesSold = append(commoditiesSold, clusterComm)
 
-	// TODO add port commodity sold for now
-	nodeProbe.CreatePortConstraints(useMap)
-	glog.V(2).Infof("----> used ports are: %s", useMap[slaveInfo.Id].UsedPorts)
-	ports := useMap[slaveInfo.Id].UsedPorts
-	for _, p := range nodeProbe.AllSlavePorts {
-		//	for port, portObj := range ports {
-		if p != "" {
-			if portObj, ok := ports[p]; ok {
-				portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
-					Key(p). // port number in string form
-					Capacity(portObj.Capacity).
-					Used(portObj.Used).
-					Create()
-				commoditiesSold = append(commoditiesSold, portComm)
+	/*
+		// TODO add port commodity sold for now
+		nodeProbe.CreatePortConstraints(useMap)
+		glog.V(2).Infof("----> used ports are: %s", useMap[slaveInfo.Id].UsedPorts)
+		ports := useMap[slaveInfo.Id].UsedPorts
+		for _, p := range nodeProbe.AllSlavePorts {
+			//	for port, portObj := range ports {
+			if p != "" {
+				if portObj, ok := ports[p]; ok {
+					portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+						Key(p). // port number in string form
+						Capacity(portObj.Capacity).
+						Used(portObj.Used).
+						Create()
+					commoditiesSold = append(commoditiesSold, portComm)
+				} else {
+					portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
+						Key(p). // port number in string form
+						Capacity(float64(1.0)).
+						Used(float64(0.0)).
+						Create()
+					commoditiesSold = append(commoditiesSold, portComm)
+				}
 			} else {
-				portComm := sdk.NewCommodityDTOBuilder(sdk.CommodityDTO_NETWORK).
-					Key(p). // port number in string form
-					Capacity(float64(1.0)).
-					Used(float64(0.0)).
-					Create()
-				commoditiesSold = append(commoditiesSold, portComm)
+				//dont add
 			}
-		} else {
-			//dont add
 		}
-	}
+	*/
 
 	// add labels
 	/*	for _, label := range labels {
@@ -194,5 +196,6 @@ func (nodeProbe *NodeProbe) CreateCommoditySold(slaveInfo *util.Slave, useMap ma
 			vmpmAccessComm := vmpmAccessCommBuilder.Create()
 			commoditiesSold = append(commoditiesSold, vmpmAccessComm)
 		}
-	*/return commoditiesSold, nil
+	*/
+	return commoditiesSold, nil
 }
